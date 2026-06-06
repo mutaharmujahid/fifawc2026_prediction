@@ -297,24 +297,19 @@ function renderPickChips(match, selectedPick, canPick) {
 
 async function handlePick(match, pick) {
   if (!currentUser) return;
+  
+  // 1. Create the unique document ID using the user's UID and the Firestore Match Document ID
   const pickId = `${currentUser.uid}_${match.id}`;
   
-  // 1. Time check right in the code
-  if (!isBeforeKickoff(match) || match.status !== "upcoming") {
-    alert("This match has already kicked off or is live! Selections are locked.");
-    return;
-  }
-
-  // 2. Write the complete object cleanly (NO merge: true)
+  // 2. Save the pick to Firestore with the matchId field explicitly matching the Document ID
   await setDoc(doc(db, "picks", pickId), {
     uid: currentUser.uid,
-    matchId: match.id,
-    pick: pick,
-    matchStatus: "upcoming", // Explicitly passed every time
+    matchId: match.id, // This links directly to your match document ID
+    pick,
     pickedAt: serverTimestamp(),
-  }); // 👈 Clean overwrite makes sure matchStatus is NEVER missing
+  }, { merge: true });
 
-  // 3. Redraw the chips on screen
+  // 3. Redraw the selection chips on screen
   const chips = document.getElementById(`chips-${match.id}`);
   if (chips) {
     chips.innerHTML = renderPickChips(match, pick, true);
