@@ -299,22 +299,22 @@ async function handlePick(match, pick) {
   if (!currentUser) return;
   const pickId = `${currentUser.uid}_${match.id}`;
   
-  // 🟢 NEW: Check the time right here in the code first
+  // 1. Time check right in the code
   if (!isBeforeKickoff(match) || match.status !== "upcoming") {
     alert("This match has already kicked off or is live! Selections are locked.");
     return;
   }
 
+  // 2. Write the complete object cleanly (NO merge: true)
   await setDoc(doc(db, "picks", pickId), {
     uid: currentUser.uid,
     matchId: match.id,
-    pick,
-    // 🔥 NEW FIELD: We pass the exact match status here so the database rules can read it instantly
-    matchStatus: match.status || "upcoming",
+    pick: pick,
+    matchStatus: "upcoming", // Explicitly passed every time
     pickedAt: serverTimestamp(),
-  }, { merge: true });
+  }); // 👈 Clean overwrite makes sure matchStatus is NEVER missing
 
-  // Refresh the card chips
+  // 3. Redraw the chips on screen
   const chips = document.getElementById(`chips-${match.id}`);
   if (chips) {
     chips.innerHTML = renderPickChips(match, pick, true);
