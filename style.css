@@ -341,13 +341,13 @@ small {
 
 .matches-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(1fr), 1fr); /* Default single col for mobile */
+  grid-template-columns: 1fr;
   gap: 1.5rem;
 }
 
 @media (min-width: 768px) {
   .matches-list {
-    grid-template-columns: repeat(2, 1fr); /* 2 Columns on desktop layout */
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -406,7 +406,7 @@ small {
 }
 
 .team-badge {
-  width: 48px;         /* Explicit container frame layout sizing */
+  width: 48px;
   height: 32px;
   display: flex;
   align-items: center;
@@ -419,7 +419,7 @@ small {
 .flag-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;   /* Prevents flag stretching or shrinking distortion */
+  object-fit: cover;
 }
 
 .team-name {
@@ -542,9 +542,6 @@ small {
 /* ─────────────────────────────────────────────────────────────────────────
    🏆 VIEW FIXES: LEADERBOARD STANDINGS TABLE
    ───────────────────────────────────────────────────────────────────────── */
-/* ─────────────────────────────────────────────────────────────────────────
-   🏆 VIEW FIXES: LEADERBOARD STANDINGS TABLE
-   ───────────────────────────────────────────────────────────────────────── */
 .table-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
@@ -554,7 +551,6 @@ small {
   margin-top: 1.5rem;
 }
 
-/* Precise grid tracking layout for flawless vertical alignment */
 .table-head, .table-row {
   display: grid;
   grid-template-columns: 50px 1fr 70px 80px 70px;
@@ -582,7 +578,6 @@ small {
   border-bottom: none;
 }
 
-/* Subtle accent background for the logged-in user */
 .table-row.me {
   background: rgba(0, 230, 118, 0.05);
   border-left: 3px solid var(--primary);
@@ -599,10 +594,9 @@ small {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  min-width: 0; /* Prevents overflow bugs on long names */
+  min-width: 0;
 }
 
-/* Perfectly circular avatar badges */
 .mini-avatar {
   width: 34px;
   height: 34px;
@@ -612,7 +606,7 @@ small {
   justify-content: center;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #0B0E14; /* Bold dark text over dynamic pastel colors */
+  color: #0B0E14;
   flex-shrink: 0;
   box-shadow: inset 0 0 4px rgba(0,0,0,0.15);
 }
@@ -643,11 +637,10 @@ small {
   width: fit-content;
 }
 
-/* Right-align numbers so columns line up perfectly on all screen sizes */
 .table-stat {
   text-align: right;
   color: var(--text-muted);
-  font-variant-numeric: tabular-nums; /* Makes all numbers equal width */
+  font-variant-numeric: tabular-nums;
   padding-right: 0.5rem;
 }
 
@@ -660,7 +653,6 @@ small {
   padding-right: 0.5rem;
 }
 
-/* Hover row highlight effect */
 .table-row:hover:not(.me) {
   background: rgba(255, 255, 255, 0.01);
 }
@@ -762,7 +754,6 @@ small {
   margin-top: 0.25rem;
 }
 
-/* History List Layout */
 .pick-history h3 {
   font-size: 1.1rem;
   font-weight: 700;
