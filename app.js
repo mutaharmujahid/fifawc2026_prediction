@@ -223,6 +223,15 @@ function renderMatchCard(match, myPick) {
   const canPick = match.status === "upcoming" && isBeforeKickoff(match);
   const selectedPick = myPick?.pick || null;
 
+  // 🔥 ADD THIS FIX HERE: Turn Firestore image URLs into <img> elements automatically
+  const homeBadgeDisplay = match.homeBadge && match.homeBadge.startsWith('http')
+    ? `<img src="${match.homeBadge}" alt="" class="flag-img" />`
+    : match.homeBadge || "🏠";
+
+  const awayBadgeDisplay = match.awayBadge && match.awayBadge.startsWith('http')
+    ? `<img src="${match.awayBadge}" alt="" class="flag-img" />`
+    : match.awayBadge || "✈️";
+
   card.innerHTML = `
     <div class="match-meta">
       <span class="match-competition">${match.competition || "Match"}</span>
@@ -232,7 +241,8 @@ function renderMatchCard(match, myPick) {
 
     <div class="match-teams">
       <div class="team-side">
-        <div class="team-badge">${match.homeBadge || "🏠"}</div>
+        <!-- Changed from ${match.homeBadge || "🏠"} to our new dynamic variable -->
+        <div class="team-badge">${homeBadgeDisplay}</div>
         <div class="team-name">${match.homeTeam}</div>
       </div>
       <div>
@@ -242,7 +252,8 @@ function renderMatchCard(match, myPick) {
         }
       </div>
       <div class="team-side">
-        <div class="team-badge">${match.awayBadge || "✈️"}</div>
+        <!-- Changed from ${match.awayBadge || "✈️"} to our new dynamic variable -->
+        <div class="team-badge">${awayBadgeDisplay}</div>
         <div class="team-name">${match.awayTeam}</div>
       </div>
     </div>
