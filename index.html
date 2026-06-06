@@ -3,115 +3,202 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Matchday — WhatsApp Group Predictor</title>
+  <title>FIFA World Cup 2026 — Prediction League</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
 <!-- ─── AUTH SCREEN ─── -->
 <div id="screen-auth" class="screen active">
-  <div class="auth-hero">
-    <div class="auth-badge">⚽</div>
-    <h1 class="brand">Matchday</h1>
-    <p class="tagline">Pick your winner. Climb the table.</p>
+  <div class="auth-bg">
+    <div class="auth-bg-grid"></div>
+    <div class="auth-bg-glow"></div>
   </div>
 
-  <div class="auth-tabs">
-    <button class="tab-btn active" data-tab="login">Sign In</button>
-    <button class="tab-btn" data-tab="signup">Sign Up</button>
-  </div>
+  <div class="auth-container">
+    <div class="auth-hero">
 
-  <div id="tab-login" class="auth-form active">
-    <div class="field">
-      <label>Phone Number</label>
-      <div class="phone-input-wrap">
-        <span class="dial-code">+</span>
-        <input type="tel" id="login-phone" placeholder="447700123456" />
+      <!-- Trophy SVG -->
+      <div class="trophy-wrap">
+        <svg class="trophy-svg" viewBox="0 0 160 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#fff7c2"/>
+              <stop offset="35%" stop-color="#f0c040"/>
+              <stop offset="70%" stop-color="#c8920a"/>
+              <stop offset="100%" stop-color="#7a5500"/>
+            </linearGradient>
+            <linearGradient id="g2" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#ffe87a"/>
+              <stop offset="100%" stop-color="#a06800"/>
+            </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <!-- Outer glow ring -->
+          <circle cx="80" cy="88" r="72" stroke="url(#g1)" stroke-width="1" fill="none" opacity="0.3"/>
+          <!-- Cup body -->
+          <path d="M44 28 H116 L110 92 Q80 118 50 92 Z" fill="url(#g1)"/>
+          <!-- Left handle -->
+          <path d="M20 32 H46 L48 72 Q34 80 20 66 Z" fill="url(#g2)"/>
+          <!-- Right handle -->
+          <path d="M140 32 H114 L112 72 Q126 80 140 66 Z" fill="url(#g2)"/>
+          <!-- Stem -->
+          <rect x="70" y="92" width="20" height="36" rx="2" fill="url(#g1)"/>
+          <!-- Base plate -->
+          <rect x="48" y="126" width="64" height="12" rx="6" fill="url(#g1)"/>
+          <!-- Base foot -->
+          <rect x="54" y="136" width="52" height="6" rx="3" fill="url(#g2)"/>
+          <!-- Shine left -->
+          <ellipse cx="66" cy="60" rx="5" ry="14" fill="white" opacity="0.18" transform="rotate(-10 66 60)"/>
+          <!-- Shine right small -->
+          <ellipse cx="94" cy="48" rx="3" ry="8" fill="white" opacity="0.1" transform="rotate(8 94 48)"/>
+          <!-- Star top -->
+          <path d="M80 6 L83 16 L94 16 L85.5 22.5 L88.5 33 L80 26.5 L71.5 33 L74.5 22.5 L66 16 L77 16 Z" fill="url(#g1)" filter="url(#glow)"/>
+          <!-- Ball hint lines on cup -->
+          <path d="M58 55 Q80 48 102 55" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" fill="none"/>
+          <path d="M52 70 Q80 62 108 70" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" fill="none"/>
+        </svg>
+        <div class="trophy-glow-ring"></div>
       </div>
-      <small>Enter with country code, no spaces or +</small>
-    </div>
-    <div class="field">
-      <label>Password</label>
-      <input type="password" id="login-password" placeholder="••••••••" />
-    </div>
-    <button class="btn-primary" id="btn-login">Sign In</button>
-    <p class="auth-msg" id="login-msg"></p>
-  </div>
 
-  <div id="tab-signup" class="auth-form">
-    <div class="field">
-      <label>Your Name</label>
-      <input type="text" id="signup-name" placeholder="e.g. Rashford" />
-    </div>
-    <div class="field">
-      <label>Phone Number <span class="required">*</span></label>
-      <div class="phone-input-wrap">
-        <span class="dial-code">+</span>
-        <input type="tel" id="signup-phone" placeholder="447700123456" />
+      <div class="auth-title-block">
+        <p class="auth-eyebrow">FIFA</p>
+        <h1 class="auth-title">WORLD CUP</h1>
+        <h1 class="auth-year">2026</h1>
+        <div class="auth-rule"></div>
+        <p class="auth-subtitle">PREDICTION LEAGUE</p>
       </div>
-      <small>Enter with country code, no spaces or +</small>
+
+      <div class="host-flags">
+        <div class="host-flag"><span>🇺🇸</span><small>USA</small></div>
+        <div class="host-dot"></div>
+        <div class="host-flag"><span>🇨🇦</span><small>CAN</small></div>
+        <div class="host-dot"></div>
+        <div class="host-flag"><span>🇲🇽</span><small>MEX</small></div>
+      </div>
     </div>
-    <div class="field">
-      <label>Password</label>
-      <input type="password" id="signup-password" placeholder="At least 6 characters" />
+
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="tab-btn active" data-tab="login">Sign In</button>
+        <button class="tab-btn" data-tab="signup">Sign Up</button>
+      </div>
+
+      <div id="tab-login" class="auth-form active">
+        <div class="field">
+          <label>Phone Number</label>
+          <div class="phone-input-wrap">
+            <span class="dial-code">+</span>
+            <input type="tel" id="login-phone" placeholder="447700123456" />
+          </div>
+          <small>Include country code, no spaces or +</small>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" />
+        </div>
+        <button class="btn-primary" id="btn-login">Sign In</button>
+        <p class="auth-msg" id="login-msg"></p>
+      </div>
+
+      <div id="tab-signup" class="auth-form">
+        <div class="field">
+          <label>Your Name</label>
+          <input type="text" id="signup-name" placeholder="e.g. Rashford" />
+        </div>
+        <div class="field">
+          <label>Phone Number <span class="required">*</span></label>
+          <div class="phone-input-wrap">
+            <span class="dial-code">+</span>
+            <input type="tel" id="signup-phone" placeholder="447700123456" />
+          </div>
+          <small>Include country code, no spaces or +</small>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="signup-password" placeholder="At least 6 characters" />
+        </div>
+        <button class="btn-primary" id="btn-signup">Create Account</button>
+        <p class="auth-msg" id="signup-msg"></p>
+      </div>
     </div>
-    <button class="btn-primary" id="btn-signup">Create Account</button>
-    <p class="auth-msg" id="signup-msg"></p>
   </div>
 </div>
 
 <!-- ─── MAIN APP ─── -->
 <div id="screen-app" class="screen">
 
-  <!-- NAV -->
   <nav class="nav">
-    <span class="nav-brand">⚽ Matchday</span>
+    <div class="nav-brand">
+      <svg class="nav-trophy" viewBox="0 0 32 42" fill="none">
+        <defs>
+          <linearGradient id="ng" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#ffe87a"/>
+            <stop offset="100%" stop-color="#c8920a"/>
+          </linearGradient>
+        </defs>
+        <path d="M8 4H24L22 20Q16 28 10 20Z" fill="url(#ng)"/>
+        <path d="M2 5H9L10 16Q5 19 2 14Z" fill="url(#ng)"/>
+        <path d="M30 5H23L22 16Q27 19 30 14Z" fill="url(#ng)"/>
+        <rect x="13" y="20" width="6" height="11" rx="1" fill="url(#ng)"/>
+        <rect x="9" y="30" width="14" height="5" rx="2.5" fill="url(#ng)"/>
+        <path d="M16 1L17.5 5.5H22L18.5 8L20 12.5L16 10L12 12.5L13.5 8L10 5.5H14.5Z" fill="url(#ng)"/>
+      </svg>
+      <div>
+        <div class="nav-wc">FIFA WORLD CUP 2026</div>
+        <div class="nav-pred">PREDICTION LEAGUE</div>
+      </div>
+    </div>
     <div class="nav-links">
-      <button class="nav-btn active" data-view="matches">Matches</button>
+      <button class="nav-btn active" data-view="matches">Fixtures</button>
       <button class="nav-btn" data-view="table">Table</button>
-      <button class="nav-btn" data-view="profile">Profile</button>
+      <button class="nav-btn" data-view="profile">Me</button>
     </div>
   </nav>
 
   <!-- MATCHES VIEW -->
   <div id="view-matches" class="view active">
     <div class="view-header">
-      <h2>Upcoming Matches</h2>
-      <p class="view-sub">Select a team before kickoff to earn points</p>
+      <h2>Fixtures</h2>
+      <p class="view-sub">Pick a team before kickoff to earn points</p>
     </div>
     <div id="matches-list" class="matches-list">
-      <div class="loading-state">Loading matches…</div>
+      <div class="loading-state"><span class="loader"></span> Loading fixtures…</div>
     </div>
   </div>
 
   <!-- TABLE VIEW -->
   <div id="view-table" class="view">
     <div class="view-header">
-      <h2>Points Table</h2>
-      <p class="view-sub">Live standings for your group</p>
+      <h2>Standings</h2>
+      <p class="view-sub">Live points table for your prediction group</p>
     </div>
     <div id="table-list" class="table-container">
-      <div class="loading-state">Loading table…</div>
+      <div class="loading-state"><span class="loader"></span> Loading standings…</div>
     </div>
   </div>
 
   <!-- PROFILE VIEW -->
   <div id="view-profile" class="view">
     <div class="view-header">
-      <h2>My Profile</h2>
+      <h2>My Stats</h2>
     </div>
-    <div class="profile-card">
+    <div class="profile-hero">
       <div class="profile-avatar" id="profile-avatar">?</div>
-      <div>
+      <div class="profile-info">
         <p class="profile-name" id="profile-name">–</p>
         <p class="profile-phone" id="profile-phone">–</p>
       </div>
     </div>
     <div class="stats-grid" id="profile-stats"></div>
     <div class="pick-history">
-      <h3>My Picks History</h3>
+      <h3 class="section-title">Pick History</h3>
       <div id="picks-history-list"><div class="loading-state">Loading…</div></div>
     </div>
     <button class="btn-danger" id="btn-logout">Sign Out</button>
@@ -123,7 +210,7 @@
 <div id="pick-modal" class="modal-overlay" style="display:none">
   <div class="modal">
     <button class="modal-close" id="modal-close">✕</button>
-    <p class="modal-subtitle" id="modal-subtitle">Choose your winner</p>
+    <p class="modal-subtitle" id="modal-subtitle">Make your prediction</p>
     <h3 class="modal-title" id="modal-title">Team A vs Team B</h3>
     <div class="modal-teams" id="modal-teams"></div>
     <p class="modal-note">You can change your pick any time before kickoff.</p>
