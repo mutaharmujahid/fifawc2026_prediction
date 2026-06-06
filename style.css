@@ -408,6 +408,8 @@ small {
 .team-badge {
   font-size: 2rem;
   line-height: 1;
+  /* Add this line below to force laptop browsers to render emoji flags */
+  font-family: "Twemoji Country Flags", "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
 }
 
 .team-name {
@@ -531,28 +533,33 @@ small {
 /* ─────────────────────────────────────────────────────────────────────────
    🏆 VIEW FIXES: LEADERBOARD STANDINGS TABLE
    ───────────────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────
+   🏆 VIEW FIXES: LEADERBOARD STANDINGS TABLE
+   ───────────────────────────────────────────────────────────────────────── */
 .table-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  margin-top: 1.5rem;
 }
 
+/* Precise grid tracking layout for flawless vertical alignment */
 .table-head, .table-row {
   display: grid;
-  grid-template-columns: 50px 1fr 60px 70px 60px;
+  grid-template-columns: 50px 1fr 70px 80px 70px;
   align-items: center;
-  padding: 1rem;
+  padding: 0.85rem 1.25rem;
 }
 
 .table-head {
   background: var(--bg-surface-hover);
   border-bottom: 1px solid var(--border-color);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   color: var(--text-muted);
 }
 
@@ -566,37 +573,50 @@ small {
   border-bottom: none;
 }
 
+/* Subtle accent background for the logged-in user */
 .table-row.me {
-  background: rgba(0, 230, 118, 0.04);
+  background: rgba(0, 230, 118, 0.05);
+  border-left: 3px solid var(--primary);
 }
 
 .table-rank {
   font-weight: 700;
   font-size: 1.1rem;
+  display: flex;
+  align-items: center;
 }
 
 .table-player {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  min-width: 0;
+  min-width: 0; /* Prevents overflow bugs on long names */
 }
 
+/* Perfectly circular avatar badges */
 .mini-avatar {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #0b0e14; /* contrast dark text over light color options */
+  color: #0B0E14; /* Bold dark text over dynamic pastel colors */
   flex-shrink: 0;
+  box-shadow: inset 0 0 4px rgba(0,0,0,0.15);
+}
+
+.player-info-block {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .player-name {
   font-weight: 600;
+  color: var(--text-main);
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
@@ -605,23 +625,35 @@ small {
 .you-badge {
   background: var(--primary);
   color: #000;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 800;
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: 3px;
-  display: inline-block;
-  margin-top: 0.1rem;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+  width: fit-content;
 }
 
+/* Right-align numbers so columns line up perfectly on all screen sizes */
 .table-stat {
-  text-align: center;
+  text-align: right;
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums; /* Makes all numbers equal width */
+  padding-right: 0.5rem;
 }
 
 .table-pts {
-  text-align: center;
+  text-align: right;
   font-weight: 700;
   color: var(--primary);
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  padding-right: 0.5rem;
+}
+
+/* Hover row highlight effect */
+.table-row:hover:not(.me) {
+  background: rgba(255, 255, 255, 0.01);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
