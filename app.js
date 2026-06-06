@@ -350,9 +350,9 @@ function loadTableView() {
       <div class="table-head">
         <span>#</span>
         <span>Player</span>
-        <span style="text-align:center">Played</span>
-        <span style="text-align:center">Correct</span>
-        <span style="text-align:center">Pts</span>
+        <span style="text-align:right">Played</span>
+        <span style="text-align:right">Correct</span>
+        <span style="text-align:right">Pts</span>
       </div>
       ${players.map((p, i) => {
         const isMe = p.id === currentUser?.uid;
@@ -362,7 +362,7 @@ function loadTableView() {
             <span class="table-rank">${rank}</span>
             <div class="table-player">
               <div class="mini-avatar" style="background:${avatarColor(p.name)}">${initials(p.name)}</div>
-              <div>
+              <div class="player-info-block">
                 <div class="player-name">${p.name}</div>
                 ${isMe ? `<span class="you-badge">YOU</span>` : ""}
               </div>
