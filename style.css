@@ -406,10 +406,20 @@ small {
 }
 
 .team-badge {
-  font-size: 2rem;
-  line-height: 1;
-  /* Add this line below to force laptop browsers to render emoji flags */
-  font-family: "Twemoji Country Flags", "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
+  width: 48px;         /* Explicit container frame layout sizing */
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.flag-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;   /* Prevents flag stretching or shrinking distortion */
 }
 
 .team-name {
