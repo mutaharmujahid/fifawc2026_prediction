@@ -298,13 +298,23 @@ function renderPickChips(match, selectedPick, canPick) {
 async function handlePick(match, pick) {
   if (!currentUser) return;
   const pickId = `${currentUser.uid}_${match.id}`;
+  
+  // 🟢 NEW: Check the time right here in the code first
+  if (!isBeforeKickoff(match) || match.status !== "upcoming") {
+    alert("This match has already kicked off or is live! Selections are locked.");
+    return;
+  }
+
   await setDoc(doc(db, "picks", pickId), {
     uid: currentUser.uid,
     matchId: match.id,
     pick,
+    // 🔥 NEW FIELD: We pass the exact match status here so the database rules can read it instantly
+    matchStatus: match.status || "upcoming",
     pickedAt: serverTimestamp(),
   }, { merge: true });
 
+  // Refresh the card chips
   const chips = document.getElementById(`chips-${match.id}`);
   if (chips) {
     chips.innerHTML = renderPickChips(match, pick, true);
