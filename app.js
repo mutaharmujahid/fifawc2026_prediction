@@ -397,17 +397,19 @@ async function handlePick(match, pick) {
     matchId: match.id,
     pick,
     pickedAt: serverTimestamp(),
-    scored: false,    // will be flipped to true by scoreMatchForAllUsers
+    scored: false,
     outcome: null,
   }, { merge: true });
 
-  // Update local cache immediately so chips reflect the new pick without a full reload
+  // Update cache with new pick
   if (myPicksCache) myPicksCache[match.id] = { uid: currentUser.uid, matchId: match.id, pick };
 
+  // Re-render chips using the NEW pick from cache (not the old closure)
   const chips = document.getElementById(`chips-${match.id}`);
   if (chips) {
     const canPick = match.status === "upcoming" && isBeforeKickoff(match);
-    chips.innerHTML = renderPickChips(match, pick, canPick);
+    const freshPick = myPicksCache[match.id]?.pick || null; // ← read from cache, not closure
+    chips.innerHTML = renderPickChips(match, freshPick, canPick);
     if (canPick) {
       chips.querySelectorAll(".pick-chip").forEach(chip => {
         chip.addEventListener("click", () => openPickModal(match, chip.dataset.pick));
