@@ -341,13 +341,13 @@ small {
 
 .matches-list {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(1fr), 1fr); /* Default single col for mobile */
   gap: 1.5rem;
 }
 
 @media (min-width: 768px) {
   .matches-list {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, 1fr); /* 2 Columns on desktop layout */
   }
 }
 
@@ -406,20 +406,8 @@ small {
 }
 
 .team-badge {
-  width: 48px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border-radius: 4px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-}
-
-.flag-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  font-size: 2rem;
+  line-height: 1;
 }
 
 .team-name {
@@ -548,23 +536,22 @@ small {
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  margin-top: 1.5rem;
 }
 
 .table-head, .table-row {
   display: grid;
-  grid-template-columns: 50px 1fr 70px 80px 70px;
+  grid-template-columns: 50px 1fr 60px 70px 60px;
   align-items: center;
-  padding: 0.85rem 1.25rem;
+  padding: 1rem;
 }
 
 .table-head {
   background: var(--bg-surface-hover);
   border-bottom: 1px solid var(--border-color);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   color: var(--text-muted);
 }
 
@@ -579,15 +566,12 @@ small {
 }
 
 .table-row.me {
-  background: rgba(0, 230, 118, 0.05);
-  border-left: 3px solid var(--primary);
+  background: rgba(0, 230, 118, 0.04);
 }
 
 .table-rank {
   font-weight: 700;
   font-size: 1.1rem;
-  display: flex;
-  align-items: center;
 }
 
 .table-player {
@@ -598,28 +582,20 @@ small {
 }
 
 .mini-avatar {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #0B0E14;
+  color: #0b0e14; /* contrast dark text over light color options */
   flex-shrink: 0;
-  box-shadow: inset 0 0 4px rgba(0,0,0,0.15);
-}
-
-.player-info-block {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
 }
 
 .player-name {
   font-weight: 600;
-  color: var(--text-main);
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
@@ -628,33 +604,23 @@ small {
 .you-badge {
   background: var(--primary);
   color: #000;
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   font-weight: 800;
-  padding: 1px 5px;
+  padding: 1px 4px;
   border-radius: 3px;
-  letter-spacing: 0.5px;
-  margin-top: 2px;
-  width: fit-content;
+  display: inline-block;
+  margin-top: 0.1rem;
 }
 
 .table-stat {
-  text-align: right;
+  text-align: center;
   color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-  padding-right: 0.5rem;
 }
 
 .table-pts {
-  text-align: right;
+  text-align: center;
   font-weight: 700;
   color: var(--primary);
-  font-size: 1.05rem;
-  font-variant-numeric: tabular-nums;
-  padding-right: 0.5rem;
-}
-
-.table-row:hover:not(.me) {
-  background: rgba(255, 255, 255, 0.01);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -754,6 +720,7 @@ small {
   margin-top: 0.25rem;
 }
 
+/* History List Layout */
 .pick-history h3 {
   font-size: 1.1rem;
   font-weight: 700;
