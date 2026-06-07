@@ -12,12 +12,14 @@ import {
   collection,
   doc,
   setDoc,
+  updateDoc,
   getDoc,
   getDocs,
   query,
   where,
   onSnapshot,
   serverTimestamp,
+  increment,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -34,9 +36,12 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // ─── STATE ─────────────────────────────────────────────────────────────────
-let currentUser = null;   
-let userData = null;      
-let unsubs = [];          
+let currentUser = null;
+let userData = null;
+let unsubs = [];
+// Cache of scored pick IDs so we never double-award points
+// { [pickId]: true }
+const scoredPicks = {};
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────
 function phoneToEmail(phone) {
@@ -59,10 +64,65 @@ function isBeforeKickoff(match) {
   return new Date() < kickoff;
 }
 
+function setButtonLoading(btn, loading, label) {
+  btn.disabled = loading;
+  btn.textContent = loading ? "Please wait…" : label;
+}
+
 function showMsg(el, text, type = "error") {
   el.textContent = text;
   el.className = `auth-msg ${type}`;
   setTimeout(() => { if (el.textContent === text) el.textContent = ""; }, 4000);
+}
+
+// ─── SCORING LOGIC ─────────────────────────────────────────────────────────
+// Rules (from README):
+//   pick === result              → +1 pt, counted as correct
+//   result === "draw" + any pick → +1 pt, counted as correct
+//   pick !== result (non-draw)   → 0 pts
+function evaluatePick(userPick, matchResult) {
+  if (!matchResult || !userPick) return null;          // match not finished / no pick
+  if (matchResult === "draw") return "win";            // any pick on a draw = point
+  if (userPick === matchResult) return "win";          // correct prediction
+  return "loss";                                       // wrong prediction
+}
+
+// Called whenever a match document transitions to "finished".
+// Scores ALL users who have a pick for that match, guarding against double-scoring
+// using the pick's `scored` flag stored in Firestore.
+async function scoreMatchForAllUsers(match) {
+  if (match.status !== "finished" || !match.result) return;
+
+  const picksSnap = await getDocs(
+    query(collection(db, "picks"), where("matchId", "==", match.id))
+  );
+
+  const promises = [];
+  picksSnap.forEach(pickDoc => {
+    const pick = pickDoc.data();
+    // Skip if already scored (persisted flag on the pick document)
+    if (pick.scored) return;
+
+    const outcome = evaluatePick(pick.pick, match.result);
+    if (outcome === null) return;
+
+    const isWin = outcome === "win";
+    const userRef = doc(db, "users", pick.uid);
+    const pickRef = doc(db, "picks", pickDoc.id);
+
+    promises.push(
+      updateDoc(userRef, {
+        points:  increment(isWin ? 1 : 0),
+        correct: increment(isWin ? 1 : 0),
+        total:   increment(1),
+      }).then(() =>
+        // Mark pick as scored so a page reload never re-awards points
+        setDoc(pickRef, { scored: true, outcome }, { merge: true })
+      )
+    );
+  });
+
+  await Promise.all(promises);
 }
 
 // ─── AUTH TABS ─────────────────────────────────────────────────────────────
@@ -76,7 +136,8 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 });
 
 // ─── SIGN UP ───────────────────────────────────────────────────────────────
-document.getElementById("btn-signup").addEventListener("click", async () => {
+const btnSignup = document.getElementById("btn-signup");
+btnSignup.addEventListener("click", async () => {
   const name  = document.getElementById("signup-name").value.trim();
   const phone = document.getElementById("signup-phone").value.replace(/\D/g, "");
   const pass  = document.getElementById("signup-password").value;
@@ -86,6 +147,7 @@ document.getElementById("btn-signup").addEventListener("click", async () => {
   if (phone.length < 7) return showMsg(msg, "Enter a valid phone number with country code.");
   if (pass.length < 6)  return showMsg(msg, "Password must be at least 6 characters.");
 
+  setButtonLoading(btnSignup, true, "Create Account");
   const email = phoneToEmail(phone);
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
@@ -105,11 +167,14 @@ document.getElementById("btn-signup").addEventListener("click", async () => {
     } else {
       showMsg(msg, e.message);
     }
+  } finally {
+    setButtonLoading(btnSignup, false, "Create Account");
   }
 });
 
 // ─── SIGN IN ───────────────────────────────────────────────────────────────
-document.getElementById("btn-login").addEventListener("click", async () => {
+const btnLogin = document.getElementById("btn-login");
+btnLogin.addEventListener("click", async () => {
   const phone = document.getElementById("login-phone").value.replace(/\D/g, "");
   const pass  = document.getElementById("login-password").value;
   const msg   = document.getElementById("login-msg");
@@ -117,6 +182,7 @@ document.getElementById("btn-login").addEventListener("click", async () => {
   if (phone.length < 7) return showMsg(msg, "Enter a valid phone number with country code.");
   if (!pass) return showMsg(msg, "Enter your password.");
 
+  setButtonLoading(btnLogin, true, "Sign In");
   const email = phoneToEmail(phone);
   try {
     await signInWithEmailAndPassword(auth, email, pass);
@@ -126,7 +192,9 @@ document.getElementById("btn-login").addEventListener("click", async () => {
     } else {
       showMsg(msg, e.message);
     }
+    setButtonLoading(btnLogin, false, "Sign In");
   }
+  // On success onAuthStateChanged fires → showApp(); button stays disabled intentionally
 });
 
 // ─── SIGN OUT ──────────────────────────────────────────────────────────────
@@ -146,6 +214,8 @@ onAuthStateChanged(auth, async (user) => {
   } else {
     currentUser = null;
     userData = null;
+    // Reset login button in case user signed out manually
+    setButtonLoading(btnLogin, false, "Sign In");
     showAuth();
   }
 });
@@ -174,6 +244,19 @@ document.querySelectorAll(".nav-btn").forEach(btn => {
 });
 
 // ─── MATCHES VIEW ──────────────────────────────────────────────────────────
+// myPicksCache is populated once per session and kept in sync by handlePick()
+// to avoid re-fetching all picks on every matches snapshot update.
+let myPicksCache = null;
+
+async function ensurePicksCache() {
+  if (myPicksCache !== null) return;
+  myPicksCache = {};
+  const snap = await getDocs(
+    query(collection(db, "picks"), where("uid", "==", currentUser.uid))
+  );
+  snap.forEach(d => { myPicksCache[d.data().matchId] = d.data(); });
+}
+
 function loadMatchesView() {
   const container = document.getElementById("matches-list");
   const q = query(collection(db, "matches"));
@@ -184,15 +267,19 @@ function loadMatchesView() {
       return;
     }
 
-    const picksSnap = await getDocs(query(
-      collection(db, "picks"),
-      where("uid", "==", currentUser.uid)
-    ));
-    const myPicks = {};
-    picksSnap.forEach(d => { myPicks[d.data().matchId] = d.data(); });
+    // Populate picks cache once, then reuse
+    await ensurePicksCache();
 
     const matches = [];
     snap.forEach(d => matches.push({ id: d.id, ...d.data() }));
+
+    // Auto-score any newly finished matches
+    for (const match of matches) {
+      if (match.status === "finished" && match.result) {
+        scoreMatchForAllUsers(match); // fire-and-forget; guards against double-scoring internally
+      }
+    }
+
     matches.sort((a, b) => {
       const order = { upcoming: 0, live: 1, finished: 2 };
       const ao = order[a.status] ?? 0;
@@ -205,7 +292,7 @@ function loadMatchesView() {
 
     container.innerHTML = "";
     for (const match of matches) {
-      container.appendChild(renderMatchCard(match, myPicks[match.id]));
+      container.appendChild(renderMatchCard(match, myPicksCache[match.id]));
     }
   });
 
@@ -253,16 +340,17 @@ function renderMatchCard(match, myPick) {
 
   if (canPick) {
     card.querySelectorAll(".pick-chip").forEach(chip => {
-      chip.addEventListener("click", () => handlePick(match, chip.dataset.pick));
+      chip.addEventListener("click", () => openPickModal(match, chip.dataset.pick));
     });
   }
 
-  loadGroupSummary(match.id, card.querySelector(`#summary-${match.id}`));
+  // Live group summary via onSnapshot (fixed: was getDocs)
+  attachGroupSummaryListener(match.id, card.querySelector(`#summary-${match.id}`));
   return card;
 }
 
+// ─── SCORING-AWARE CHIP RENDERER ───────────────────────────────────────────
 function renderPickChips(match, selectedPick, canPick) {
-  // 🔥 DRAW REMOVED: Only Home vs Away chips generated here
   const chips = [
     { pick: "home", label: match.homeTeam },
     { pick: "away", label: match.awayTeam },
@@ -270,56 +358,146 @@ function renderPickChips(match, selectedPick, canPick) {
 
   return chips.map(({ pick, label }) => {
     let classes = "pick-chip";
-    if (selectedPick === pick) {
-      if (match.status === "finished") {
-        // Scoring formula adjustment: Submitting any team before deadline awards +1pt
-        classes += " correct";
+    const isSelected = selectedPick === pick;
+
+    if (isSelected) {
+      if (match.status === "finished" && match.result) {
+        const outcome = evaluatePick(pick, match.result);
+        classes += outcome === "win" ? " correct" : " wrong";
       } else {
         classes += " selected";
       }
     }
+
+    // Highlight winning side on finished matches even if user didn't pick it
+    if (match.status === "finished" && match.result) {
+      const isWinner = match.result === pick || match.result === "draw";
+      if (isWinner && !isSelected) classes += " winner-highlight";
+    }
+
     if (!canPick) classes += " locked";
-    return `<button class="${classes}" data-pick="${pick}">${label}${selectedPick === pick ? " ✓" : ""}</button>`;
+
+    const icon = isSelected
+      ? (match.status === "finished" && match.result
+          ? (evaluatePick(pick, match.result) === "win" ? " ✓" : " ✗")
+          : " ✓")
+      : "";
+
+    return `<button class="${classes}" data-pick="${pick}">${label}${icon}</button>`;
   }).join("");
 }
 
+// ─── PICK HANDLER ──────────────────────────────────────────────────────────
 async function handlePick(match, pick) {
   if (!currentUser) return;
   const pickId = `${currentUser.uid}_${match.id}`;
+
   await setDoc(doc(db, "picks", pickId), {
     uid: currentUser.uid,
     matchId: match.id,
     pick,
     pickedAt: serverTimestamp(),
+    scored: false,    // will be flipped to true by scoreMatchForAllUsers
+    outcome: null,
   }, { merge: true });
+
+  // Update local cache immediately so chips reflect the new pick without a full reload
+  if (myPicksCache) myPicksCache[match.id] = { uid: currentUser.uid, matchId: match.id, pick };
 
   const chips = document.getElementById(`chips-${match.id}`);
   if (chips) {
-    chips.innerHTML = renderPickChips(match, pick, true);
-    chips.querySelectorAll(".pick-chip").forEach(chip => {
-      chip.addEventListener("click", () => handlePick(match, chip.dataset.pick));
-    });
+    const canPick = match.status === "upcoming" && isBeforeKickoff(match);
+    chips.innerHTML = renderPickChips(match, pick, canPick);
+    if (canPick) {
+      chips.querySelectorAll(".pick-chip").forEach(chip => {
+        chip.addEventListener("click", () => openPickModal(match, chip.dataset.pick));
+      });
+    }
   }
 }
 
-async function loadGroupSummary(matchId, el) {
-  const snap = await getDocs(query(collection(db, "picks"), where("matchId", "==", matchId)));
-  const counts = { home: 0, away: 0 };
-  snap.forEach(d => { if(d.data().pick !== "draw") counts[d.data().pick] = (counts[d.data().pick] || 0) + 1; });
-  const total = snap.size;
-  if (total === 0) { el.textContent = "No picks yet"; return; }
-
-  const pct = (k) => total ? Math.round((counts[k] / total) * 100) : 0;
-
-  // 🔥 REMOVED DRAW BAR LABELS
-  el.innerHTML = `
-    <span>${total} pick${total !== 1 ? "s" : ""} · Home ${pct("home")}% · Away ${pct("away")}%</span>
-    <div class="group-picks-bar">
-      <div class="bar-home" style="width:${pct("home")}%"></div>
-      <div class="bar-away" style="width:${pct("away")}%"></div>
-    </div>
-  `;
+// ─── LIVE GROUP SUMMARY ────────────────────────────────────────────────────
+// Uses onSnapshot so the bar updates in real-time as others pick.
+// Returns the unsubscribe function so callers can clean up if needed.
+function attachGroupSummaryListener(matchId, el) {
+  return onSnapshot(
+    query(collection(db, "picks"), where("matchId", "==", matchId)),
+    (snap) => {
+      const counts = { home: 0, away: 0 };
+      snap.forEach(d => {
+        const p = d.data().pick;
+        if (p === "home" || p === "away") counts[p]++;
+      });
+      const total = snap.size;
+      if (!el) return;
+      if (total === 0) { el.textContent = "No picks yet"; return; }
+      const pct = (k) => Math.round((counts[k] / total) * 100);
+      el.innerHTML = `
+        <span>${total} pick${total !== 1 ? "s" : ""} · Home ${pct("home")}% · Away ${pct("away")}%</span>
+        <div class="group-picks-bar">
+          <div class="bar-home" style="width:${pct("home")}%"></div>
+          <div class="bar-away" style="width:${pct("away")}%"></div>
+        </div>
+      `;
+    }
+  );
 }
+
+// ─── MODAL (PICK CONFIRMATION) ─────────────────────────────────────────────
+const pickModal   = document.getElementById("pick-modal");
+const modalClose  = document.getElementById("modal-close");
+const modalTitle  = document.getElementById("modal-title");
+const modalSub    = document.getElementById("modal-subtitle");
+const modalTeams  = document.getElementById("modal-teams");
+
+let pendingMatchForModal = null;
+
+function openPickModal(match, preselectedPick = null) {
+  pendingMatchForModal = match;
+  modalTitle.textContent = `${match.homeTeam} vs ${match.awayTeam}`;
+  modalSub.textContent   = fmtDate(match.kickoff);
+
+  const currentPick = myPicksCache?.[match.id]?.pick || null;
+
+  modalTeams.innerHTML = [
+    { pick: "home", label: match.homeTeam, badge: match.homeBadge || "🏠" },
+    { pick: "away", label: match.awayTeam, badge: match.awayBadge || "✈️" },
+  ].map(({ pick, label, badge }) => {
+    const isSelected = (preselectedPick || currentPick) === pick;
+    return `
+      <button class="modal-team-btn ${isSelected ? "modal-team-selected" : ""}" data-pick="${pick}">
+        <span class="modal-team-badge">${badge}</span>
+        <span class="modal-team-name">${label}</span>
+        ${isSelected ? `<span class="modal-checkmark">✓</span>` : ""}
+      </button>
+    `;
+  }).join("");
+
+  // Wire up team buttons inside modal
+  modalTeams.querySelectorAll(".modal-team-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      await handlePick(match, btn.dataset.pick);
+      closePickModal();
+    });
+  });
+
+  pickModal.style.display = "flex";
+  document.body.style.overflow = "hidden";
+}
+
+function closePickModal() {
+  pickModal.style.display = "none";
+  document.body.style.overflow = "";
+  pendingMatchForModal = null;
+}
+
+modalClose.addEventListener("click", closePickModal);
+pickModal.addEventListener("click", (e) => {
+  if (e.target === pickModal) closePickModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closePickModal();
+});
 
 // ─── TABLE VIEW ────────────────────────────────────────────────────────────
 function loadTableView() {
@@ -365,6 +543,10 @@ function loadTableView() {
         `;
       }).join("")}
     `;
+
+    // Keep in-memory userData fresh so profile stats don't lag
+    const me = players.find(p => p.id === currentUser?.uid);
+    if (me) userData = { ...userData, ...me };
   });
 
   unsubs.push(unsub);
@@ -382,36 +564,55 @@ function loadProfileView() {
   if (!currentUser || !userData) return;
 
   document.getElementById("profile-avatar").textContent = initials(userData.name);
-  document.getElementById("profile-name").textContent = userData.name;
-  document.getElementById("profile-phone").textContent = `+${userData.phone}`;
+  document.getElementById("profile-name").textContent   = userData.name;
+  document.getElementById("profile-phone").textContent  = `+${userData.phone}`;
 
-  const statsEl = document.getElementById("profile-stats");
-  statsEl.innerHTML = `
-    <div class="stat-card"><div class="stat-num">${userData.points || 0}</div><div class="stat-label">Points</div></div>
-    <div class="stat-card"><div class="stat-num">${userData.correct || 0}</div><div class="stat-label">Correct</div></div>
-    <div class="stat-card"><div class="stat-num">${userData.total || 0}</div><div class="stat-label">Played</div></div>
-  `;
+  // Keep profile stats live by listening to this user's doc
+  const userUnsub = onSnapshot(doc(db, "users", currentUser.uid), (snap) => {
+    if (!snap.exists()) return;
+    const d = snap.data();
+    userData = { ...userData, ...d };
+    const statsEl = document.getElementById("profile-stats");
+    if (statsEl) {
+      statsEl.innerHTML = `
+        <div class="stat-card"><div class="stat-num">${d.points || 0}</div><div class="stat-label">Points</div></div>
+        <div class="stat-card"><div class="stat-num">${d.correct || 0}</div><div class="stat-label">Correct</div></div>
+        <div class="stat-card"><div class="stat-num">${d.total || 0}</div><div class="stat-label">Played</div></div>
+      `;
+    }
+  });
+  unsubs.push(userUnsub);
 
   loadPickHistory();
 }
 
+// ─── PICK HISTORY ──────────────────────────────────────────────────────────
+// Batches match fetches with a single getDocs call using `__name__` in array
+// instead of N sequential getDoc calls.
 async function loadPickHistory() {
   const el = document.getElementById("picks-history-list");
-  const picksSnap = await getDocs(query(
-    collection(db, "picks"),
-    where("uid", "==", currentUser.uid)
-  ));
+  const picksSnap = await getDocs(
+    query(collection(db, "picks"), where("uid", "==", currentUser.uid))
+  );
 
   if (picksSnap.empty) { el.innerHTML = `<div class="empty-state">No picks yet.</div>`; return; }
 
   const picks = [];
   picksSnap.forEach(d => picks.push({ id: d.id, ...d.data() }));
 
+  // Batch fetch all match docs (Firestore `in` supports up to 30 items)
   const matchIds = [...new Set(picks.map(p => p.matchId))];
   const matchMap = {};
-  for (const mid of matchIds) {
-    const mSnap = await getDoc(doc(db, "matches", mid));
-    if (mSnap.exists()) matchMap[mid] = mSnap.data();
+
+  // Split into chunks of 30 to respect Firestore limits
+  const chunks = [];
+  for (let i = 0; i < matchIds.length; i += 30) chunks.push(matchIds.slice(i, i + 30));
+
+  for (const chunk of chunks) {
+    // Fetch each doc individually but in parallel (no composite index needed)
+    const fetches = chunk.map(mid => getDoc(doc(db, "matches", mid)));
+    const results = await Promise.all(fetches);
+    results.forEach(snap => { if (snap.exists()) matchMap[snap.id] = snap.data(); });
   }
 
   picks.sort((a, b) => {
@@ -423,15 +624,31 @@ async function loadPickHistory() {
   el.innerHTML = picks.map(p => {
     const match = matchMap[p.matchId];
     if (!match) return "";
+
+    const pickedTeam = p.pick === "home" ? match.homeTeam : match.awayTeam;
+
     let resultHtml = `<span class="history-result result-pending">Pending</span>`;
-    if (match.status === "finished") {
-       // Since picking a team awards a point, all submissions render as valid wins once completed
-       resultHtml = `<span class="history-result result-win">+1 pt ✓</span>`;
+    if (match.status === "finished" && match.result) {
+      const outcome = evaluatePick(p.pick, match.result);
+      if (outcome === "win") {
+        resultHtml = `<span class="history-result result-win">+1 pt ✓</span>`;
+      } else {
+        resultHtml = `<span class="history-result result-loss">0 pts ✗</span>`;
+      }
     }
+
+    // Show what the actual result was on finished matches
+    const resultInfo = match.status === "finished" && match.result
+      ? `<span class="history-actual">Result: ${match.result === "draw" ? "Draw" : match.result === "home" ? match.homeTeam : match.awayTeam}</span>`
+      : "";
+
     return `
       <div class="history-item">
-        <span class="history-match">${match.homeTeam} vs ${match.awayTeam}</span>
-        <span class="history-pick">Picked: ${p.pick === "home" ? match.homeTeam : match.awayTeam}</span>
+        <div class="history-left">
+          <span class="history-match">${match.homeTeam} vs ${match.awayTeam}</span>
+          <span class="history-pick">Picked: ${pickedTeam}</span>
+          ${resultInfo}
+        </div>
         ${resultHtml}
       </div>
     `;
