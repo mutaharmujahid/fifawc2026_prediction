@@ -75,6 +75,12 @@ function showMsg(el, text, type = "error") {
   setTimeout(() => { if (el.textContent === text) el.textContent = ""; }, 4000);
 }
 
+// ─── FLAG HELPER ───────────────────────────────────────────────────────────
+function flagImg(code, teamName) {
+  if (!code) return null;
+  return `<img src="https://flagcdn.com/64x48/${code.toLowerCase()}.png" alt="${teamName}" class="flag-img" onerror="this.style.display='none'">`;
+}
+
 // ─── SCORING LOGIC ─────────────────────────────────────────────────────────
 // Rules (from README):
 //   pick === result              → +1 pt, counted as correct
@@ -314,7 +320,7 @@ function renderMatchCard(match, myPick) {
 
     <div class="match-teams">
       <div class="team-side">
-        <div class="team-badge">${match.homeBadge || "🏠"}</div>
+        <div class="team-badge">${flagImg(match.homeCode, match.homeTeam) || match.homeBadge || "🏠"}</div>
         <div class="team-name">${match.homeTeam}</div>
       </div>
       <div>
@@ -324,7 +330,7 @@ function renderMatchCard(match, myPick) {
         }
       </div>
       <div class="team-side">
-        <div class="team-badge">${match.awayBadge || "✈️"}</div>
+        <div class="team-badge">${flagImg(match.awayCode, match.awayTeam) || match.awayBadge || "✈️"}</div>
         <div class="team-name">${match.awayTeam}</div>
       </div>
     </div>
@@ -397,19 +403,17 @@ async function handlePick(match, pick) {
     matchId: match.id,
     pick,
     pickedAt: serverTimestamp(),
-    scored: false,
+    scored: false,    // will be flipped to true by scoreMatchForAllUsers
     outcome: null,
   }, { merge: true });
 
-  // Update cache with new pick
+  // Update local cache immediately so chips reflect the new pick without a full reload
   if (myPicksCache) myPicksCache[match.id] = { uid: currentUser.uid, matchId: match.id, pick };
 
-  // Re-render chips using the NEW pick from cache (not the old closure)
   const chips = document.getElementById(`chips-${match.id}`);
   if (chips) {
     const canPick = match.status === "upcoming" && isBeforeKickoff(match);
-    const freshPick = myPicksCache[match.id]?.pick || null; // ← read from cache, not closure
-    chips.innerHTML = renderPickChips(match, freshPick, canPick);
+    chips.innerHTML = renderPickChips(match, pick, canPick);
     if (canPick) {
       chips.querySelectorAll(".pick-chip").forEach(chip => {
         chip.addEventListener("click", () => openPickModal(match, chip.dataset.pick));
@@ -462,15 +466,15 @@ function openPickModal(match, preselectedPick = null) {
   const currentPick = myPicksCache?.[match.id]?.pick || null;
 
   modalTeams.innerHTML = [
-    { pick: "home", label: match.homeTeam, badge: match.homeBadge || "🏠" },
-    { pick: "away", label: match.awayTeam, badge: match.awayBadge || "✈️" },
-  ].map(({ pick, label, badge }) => {
+    { pick: "home", label: match.homeTeam, code: match.homeCode, badge: match.homeBadge || "🏠" },
+    { pick: "away", label: match.awayTeam, code: match.awayCode, badge: match.awayBadge || "✈️" },
+  ].map(({ pick, label, code, badge }) => {
+    const displayBadge = flagImg(code, label) || badge;
     const isSelected = false;
     return `
-      <button class="modal-team-btn ${isSelected ? "modal-team-selected" : ""}" data-pick="${pick}">
-        <span class="modal-team-badge">${badge}</span>
+      <button class="modal-team-btn" data-pick="${pick}">
+        <span class="modal-team-badge">${displayBadge}</span>
         <span class="modal-team-name">${label}</span>
-        ${isSelected ? `<span class="modal-checkmark">✓</span>` : ""}
       </button>
     `;
   }).join("");
