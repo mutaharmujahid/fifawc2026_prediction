@@ -2,27 +2,47 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users: anyone can read; only the user themselves can write their own doc
+    // ── Users ────────────────────────────────────────────────────────────────
+    // Any signed-in user can read all profiles (needed for leaderboard).
+    // A user can only create/update their own document.
+    // The app also needs to increment points/correct/total on OTHER users when
+    // scoring — that is handled server-side via the admin SDK in a Cloud Function,
+    // OR client-side where the scoring user writes to other users' docs.
+    // To support client-side scoring writes we allow authenticated updates to
+    // the specific numeric fields only (never name/phone/uid).
     match /users/{userId} {
       allow read: if request.auth != null;
       allow create: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId;
+      // Own profile: full update allowed
+      // Other profiles: only points/correct/total may be touched (for client-side scoring)
+      allow update: if request.auth != null && (
+        request.auth.uid == userId
+        || (
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["points", "correct", "total"])
+        )
+      );
       allow delete: if false;
     }
 
-    // Matches: all authenticated users can read; only admin UID can write
-    // Replace YOUR_ADMIN_UID with your Firebase UID (find it in Auth > Users tab)
+    // ── Matches ──────────────────────────────────────────────────────────────
+    // All signed-in users can read; only the admin can write.
     match /matches/{matchId} {
       allow read: if request.auth != null;
-      allow write: if request.auth.uid == "YOUR_ADMIN_UID";
+      allow write: if request.auth.uid == "mODUlHq8BJSpTMpJhAFfejA521N2";
     }
 
-    // Picks: any authenticated user can read all picks (for group summaries)
-    // Users can create/update their own picks only
+    // ── Picks ────────────────────────────────────────────────────────────────
+    // Any signed-in user can read all picks (needed for group summary bars).
+    // Users can create/update their own picks only.
+    // The `scored` and `outcome` fields are written by the app after a match
+    // finishes — still scoped to the pick owner's uid.
     match /picks/{pickId} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null
+      allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid;
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid;
       allow delete: if false;
     }
   }
