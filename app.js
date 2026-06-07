@@ -465,7 +465,7 @@ function openPickModal(match, preselectedPick = null) {
     { pick: "home", label: match.homeTeam, badge: match.homeBadge || "🏠" },
     { pick: "away", label: match.awayTeam, badge: match.awayBadge || "✈️" },
   ].map(({ pick, label, badge }) => {
-    const isSelected = (preselectedPick || currentPick) === pick;
+    const isSelected = false;
     return `
       <button class="modal-team-btn ${isSelected ? "modal-team-selected" : ""}" data-pick="${pick}">
         <span class="modal-team-badge">${badge}</span>
