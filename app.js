@@ -75,6 +75,16 @@ function showMsg(el, text, type = "error") {
   setTimeout(() => { if (el.textContent === text) el.textContent = ""; }, 4000);
 }
 
+// ─── BADGE HELPER ──────────────────────────────────────────────────────────
+// If the stored badge value is a URL, wrap it in an <img>. Otherwise render as-is (emoji).
+function renderBadge(badge, teamName) {
+  if (!badge) return "🏳️";
+  if (badge.startsWith("http")) {
+    return `<img src="${badge}" alt="${teamName}" class="flag-img" onerror="this.style.display='none'">`;
+  }
+  return badge;
+}
+
 // ─── SCORING LOGIC ─────────────────────────────────────────────────────────
 // Rules (from README):
 //   pick === result              → +1 pt, counted as correct
@@ -314,7 +324,7 @@ function renderMatchCard(match, myPick) {
 
     <div class="match-teams">
       <div class="team-side">
-        <div class="team-badge">${match.homeBadge || "🏠"}</div>
+        <div class="team-badge">${renderBadge(match.homeBadge, match.homeTeam)}</div>
         <div class="team-name">${match.homeTeam}</div>
       </div>
       <div>
@@ -324,7 +334,7 @@ function renderMatchCard(match, myPick) {
         }
       </div>
       <div class="team-side">
-        <div class="team-badge">${match.awayBadge || "✈️"}</div>
+        <div class="team-badge">${renderBadge(match.awayBadge, match.awayTeam)}</div>
         <div class="team-name">${match.awayTeam}</div>
       </div>
     </div>
@@ -460,12 +470,12 @@ function openPickModal(match, preselectedPick = null) {
   const currentPick = myPicksCache?.[match.id]?.pick || null;
 
   modalTeams.innerHTML = [
-    { pick: "home", label: match.homeTeam, badge: match.homeBadge || "🏠" },
-    { pick: "away", label: match.awayTeam, badge: match.awayBadge || "✈️" },
+    { pick: "home", label: match.homeTeam, badge: match.homeBadge },
+    { pick: "away", label: match.awayTeam, badge: match.awayBadge },
   ].map(({ pick, label, badge }) => {
     return `
       <button class="modal-team-btn" data-pick="${pick}">
-        <span class="modal-team-badge">${badge}</span>
+        <span class="modal-team-badge">${renderBadge(badge, label)}</span>
         <span class="modal-team-name">${label}</span>
       </button>
     `;
