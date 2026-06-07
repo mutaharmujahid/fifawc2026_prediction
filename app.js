@@ -297,27 +297,32 @@ function renderPickChips(match, selectedPick, canPick) {
 
 async function handlePick(match, pick) {
   if (!currentUser) return;
-  
-  // 1. Create the unique document ID using the user's UID and the Firestore Match Document ID
-  const safeMatchId = match.id.replace(/[:/]/g, "_");
-  const pickId = `${currentUser.uid}_${safeMatchId}`;
-  
-  // 2. Save the pick to Firestore with the matchId field explicitly matching the Document ID
-  await setDoc(doc(db, "picks", pickId), {
-    uid: currentUser.uid,
-    matchId: match.id,        // ← keep original match.id here for querying
-    safeMatchId: safeMatchId, // ← store safe version too
-    pick,
-    pickedAt: serverTimestamp(),
-  }, { merge: true });
 
-  // 3. Redraw the selection chips on screen
-  const chips = document.getElementById(`chips-${match.id}`);
-  if (chips) {
-    chips.innerHTML = renderPickChips(match, pick, true);
-    chips.querySelectorAll(".pick-chip").forEach(chip => {
-      chip.addEventListener("click", () => handlePick(match, chip.dataset.pick));
-    });
+  const safeMatchId = match.id.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const pickId = `${currentUser.uid}_${safeMatchId}`;
+
+  console.log("Attempting pick:", { pickId, matchId: match.id, safeMatchId, pick, uid: currentUser.uid });
+
+  try {
+    await setDoc(doc(db, "picks", pickId), {
+      uid: currentUser.uid,
+      matchId: match.id,
+      pick,
+      pickedAt: serverTimestamp(),
+    }, { merge: true });
+
+    console.log("Pick saved successfully!");
+
+    const chips = document.getElementById(`chips-${match.id}`);
+    if (chips) {
+      chips.innerHTML = renderPickChips(match, pick, true);
+      chips.querySelectorAll(".pick-chip").forEach(chip => {
+        chip.addEventListener("click", () => handlePick(match, chip.dataset.pick));
+      });
+    }
+  } catch (err) {
+    console.error("Pick failed:", err.code, err.message);
+    alert("Could not save pick: " + err.message);
   }
 }
 
