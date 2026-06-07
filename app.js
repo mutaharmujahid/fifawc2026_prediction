@@ -1,6 +1,4 @@
 // ─── FIREBASE CONFIG ───────────────────────────────────────────────────────
-// 🔧 REPLACE these values with your own Firebase project config.
-// Get it from: Firebase Console → Project Settings → Your apps → SDK setup
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth,
@@ -36,13 +34,12 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // ─── STATE ─────────────────────────────────────────────────────────────────
-let currentUser = null;   // Firebase auth user
-let userData = null;      // Firestore user doc
-let unsubs = [];          // Firestore listeners to clean up
+let currentUser = null;   
+let userData = null;      
+let unsubs = [];          
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────
 function phoneToEmail(phone) {
-  // Firebase Auth requires email; we synthesize one from phone
   return `${phone.replace(/\D/g, "")}@matchday.app`;
 }
 
@@ -187,7 +184,6 @@ function loadMatchesView() {
       return;
     }
 
-    // Fetch user picks for all matches in one go
     const picksSnap = await getDocs(query(
       collection(db, "picks"),
       where("uid", "==", currentUser.uid)
@@ -195,7 +191,6 @@ function loadMatchesView() {
     const myPicks = {};
     picksSnap.forEach(d => { myPicks[d.data().matchId] = d.data(); });
 
-    // Sort matches: upcoming first, then live, then finished
     const matches = [];
     snap.forEach(d => matches.push({ id: d.id, ...d.data() }));
     matches.sort((a, b) => {
@@ -256,32 +251,29 @@ function renderMatchCard(match, myPick) {
     </div>
   `;
 
-  // Attach pick handlers
   if (canPick) {
     card.querySelectorAll(".pick-chip").forEach(chip => {
       chip.addEventListener("click", () => handlePick(match, chip.dataset.pick));
     });
   }
 
-  // Load group picks summary
   loadGroupSummary(match.id, card.querySelector(`#summary-${match.id}`));
-
   return card;
 }
 
 function renderPickChips(match, selectedPick, canPick) {
-  const winner = match.result; // "home" | "away" | "draw"
+  // 🔥 DRAW REMOVED: Only Home vs Away chips generated here
   const chips = [
     { pick: "home", label: match.homeTeam },
-    { pick: "draw", label: "Draw" },
     { pick: "away", label: match.awayTeam },
   ];
 
   return chips.map(({ pick, label }) => {
     let classes = "pick-chip";
     if (selectedPick === pick) {
-      if (winner && match.status === "finished") {
-        classes += pick === winner ? " correct" : " wrong";
+      if (match.status === "finished") {
+        // Scoring formula adjustment: Submitting any team before deadline awards +1pt
+        classes += " correct";
       } else {
         classes += " selected";
       }
@@ -301,7 +293,6 @@ async function handlePick(match, pick) {
     pickedAt: serverTimestamp(),
   }, { merge: true });
 
-  // Refresh the card chips
   const chips = document.getElementById(`chips-${match.id}`);
   if (chips) {
     chips.innerHTML = renderPickChips(match, pick, true);
@@ -313,18 +304,18 @@ async function handlePick(match, pick) {
 
 async function loadGroupSummary(matchId, el) {
   const snap = await getDocs(query(collection(db, "picks"), where("matchId", "==", matchId)));
-  const counts = { home: 0, draw: 0, away: 0 };
-  snap.forEach(d => { counts[d.data().pick] = (counts[d.data().pick] || 0) + 1; });
+  const counts = { home: 0, away: 0 };
+  snap.forEach(d => { if(d.data().pick !== "draw") counts[d.data().pick] = (counts[d.data().pick] || 0) + 1; });
   const total = snap.size;
   if (total === 0) { el.textContent = "No picks yet"; return; }
 
   const pct = (k) => total ? Math.round((counts[k] / total) * 100) : 0;
 
+  // 🔥 REMOVED DRAW BAR LABELS
   el.innerHTML = `
-    <span>${total} pick${total !== 1 ? "s" : ""} · Home ${pct("home")}% · Draw ${pct("draw")}% · Away ${pct("away")}%</span>
+    <span>${total} pick${total !== 1 ? "s" : ""} · Home ${pct("home")}% · Away ${pct("away")}%</span>
     <div class="group-picks-bar">
       <div class="bar-home" style="width:${pct("home")}%"></div>
-      <div class="bar-draw" style="width:${pct("draw")}%"></div>
       <div class="bar-away" style="width:${pct("away")}%"></div>
     </div>
   `;
@@ -413,7 +404,6 @@ async function loadPickHistory() {
 
   if (picksSnap.empty) { el.innerHTML = `<div class="empty-state">No picks yet.</div>`; return; }
 
-  // Fetch match data for each pick
   const picks = [];
   picksSnap.forEach(d => picks.push({ id: d.id, ...d.data() }));
 
@@ -433,21 +423,15 @@ async function loadPickHistory() {
   el.innerHTML = picks.map(p => {
     const match = matchMap[p.matchId];
     if (!match) return "";
-    const winner = match.result;
     let resultHtml = `<span class="history-result result-pending">Pending</span>`;
     if (match.status === "finished") {
-      if (winner === "draw") {
-        resultHtml = `<span class="history-result result-draw">Draw +1pt</span>`;
-      } else if (p.pick === winner) {
-        resultHtml = `<span class="history-result result-win">+1 pt ✓</span>`;
-      } else {
-        resultHtml = `<span class="history-result result-loss">0 pts ✗</span>`;
-      }
+       // Since picking a team awards a point, all submissions render as valid wins once completed
+       resultHtml = `<span class="history-result result-win">+1 pt ✓</span>`;
     }
     return `
       <div class="history-item">
         <span class="history-match">${match.homeTeam} vs ${match.awayTeam}</span>
-        <span class="history-pick">${p.pick === "home" ? match.homeTeam : p.pick === "away" ? match.awayTeam : "Draw"}</span>
+        <span class="history-pick">Picked: ${p.pick === "home" ? match.homeTeam : match.awayTeam}</span>
         ${resultHtml}
       </div>
     `;
