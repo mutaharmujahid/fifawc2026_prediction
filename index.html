@@ -12,6 +12,7 @@
 </head>
 <body>
 
+<!-- ─── AUTH SCREEN ─── -->
 <div id="screen-auth" class="screen active">
   <div class="auth-card">
     <div class="auth-hero">
@@ -25,6 +26,7 @@
       <button class="tab-btn" data-tab="signup">Create Account</button>
     </div>
 
+    <!-- Sign In Form -->
     <div id="tab-login" class="auth-form active">
       <div class="field">
         <label for="login-phone">Registered Number</label>
@@ -42,6 +44,7 @@
       <p class="auth-msg error" id="login-msg"></p>
     </div>
 
+    <!-- Sign Up Form -->
     <div id="tab-signup" class="auth-form">
       <div class="field">
         <label for="signup-name">First Name</label>
@@ -65,7 +68,9 @@
   </div>
 </div>
 
+<!-- ─── MAIN APP ─── -->
 <div id="screen-app" class="screen">
+  <!-- NAVIGATION -->
   <nav class="nav">
     <div class="nav-container">
       <span class="nav-brand">🏆 FIFA World Cup 2026</span>
@@ -78,6 +83,7 @@
   </nav>
 
   <main class="app-container">
+    <!-- MATCHES VIEW -->
     <div id="view-matches" class="view active">
       <div class="view-header">
         <h2>Upcoming Matches</h2>
@@ -91,6 +97,7 @@
       </div>
     </div>
 
+    <!-- TABLE VIEW -->
     <div id="view-table" class="view">
       <div class="view-header">
         <h2>Points Table</h2>
@@ -106,6 +113,7 @@
       </div>
     </div>
 
+    <!-- PROFILE VIEW -->
     <div id="view-profile" class="view">
       <div class="view-header">
         <h2>My Profile</h2>
@@ -140,6 +148,7 @@
   </main>
 </div>
 
+<!-- PICK MODAL -->
 <div id="pick-modal" class="modal-overlay" style="display:none">
   <div class="modal">
     <button class="modal-close" id="modal-close" aria-label="Close modal">
