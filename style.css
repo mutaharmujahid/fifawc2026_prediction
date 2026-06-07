@@ -882,3 +882,88 @@ small {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
 }
+/* ─────────────────────────────────────────────────────────────────────────
+   🆕 MODAL: TEAM PICK BUTTONS
+   ───────────────────────────────────────────────────────────────────────── */
+.modal-teams {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.modal-team-btn {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--bg-surface-hover);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  color: var(--text-main);
+  font-size: 1rem;
+  font-weight: 600;
+  transition: var(--transition);
+  width: 100%;
+  text-align: left;
+  position: relative;
+}
+
+.modal-team-btn:hover {
+  border-color: var(--accent);
+  background: rgba(0, 229, 255, 0.05);
+}
+
+.modal-team-btn.modal-team-selected {
+  border-color: var(--primary);
+  background: rgba(0, 230, 118, 0.08);
+  color: var(--primary);
+}
+
+.modal-team-badge {
+  font-size: 1.75rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.modal-team-name {
+  flex: 1;
+}
+
+.modal-checkmark {
+  font-size: 1.1rem;
+  color: var(--primary);
+  font-weight: 800;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   🆕 PICK CHIPS: WINNER HIGHLIGHT ON FINISHED MATCHES
+   ───────────────────────────────────────────────────────────────────────── */
+.pick-chip.winner-highlight {
+  border-color: rgba(0, 230, 118, 0.3);
+  background: rgba(0, 230, 118, 0.04);
+  color: var(--text-muted);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   🆕 HISTORY ITEM: LEFT COLUMN LAYOUT + ACTUAL RESULT LINE
+   ───────────────────────────────────────────────────────────────────────── */
+.history-item {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.history-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.history-actual {
+  font-size: 0.78rem;
+  color: var(--accent);
+  font-weight: 500;
+}
