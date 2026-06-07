@@ -1,4 +1,6 @@
 // ─── FIREBASE CONFIG ───────────────────────────────────────────────────────
+// 🔧 REPLACE these values with your own Firebase project config.
+// Get it from: Firebase Console → Project Settings → Your apps → SDK setup
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth,
@@ -40,6 +42,7 @@ let unsubs = [];          // Firestore listeners to clean up
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────
 function phoneToEmail(phone) {
+  // Firebase Auth requires email; we synthesize one from phone
   return `${phone.replace(/\D/g, "")}@matchday.app`;
 }
 
@@ -60,7 +63,6 @@ function isBeforeKickoff(match) {
 }
 
 function showMsg(el, text, type = "error") {
-  if (!el) return;
   el.textContent = text;
   el.className = `auth-msg ${type}`;
   setTimeout(() => { if (el.textContent === text) el.textContent = ""; }, 4000);
@@ -185,6 +187,7 @@ function loadMatchesView() {
       return;
     }
 
+    // Fetch user picks for all matches in one go
     const picksSnap = await getDocs(query(
       collection(db, "picks"),
       where("uid", "==", currentUser.uid)
@@ -192,6 +195,7 @@ function loadMatchesView() {
     const myPicks = {};
     picksSnap.forEach(d => { myPicks[d.data().matchId] = d.data(); });
 
+    // Sort matches: upcoming first, then live, then finished
     const matches = [];
     snap.forEach(d => matches.push({ id: d.id, ...d.data() }));
     matches.sort((a, b) => {
@@ -219,14 +223,6 @@ function renderMatchCard(match, myPick) {
   const canPick = match.status === "upcoming" && isBeforeKickoff(match);
   const selectedPick = myPick?.pick || null;
 
-  const homeBadgeDisplay = match.homeBadge && match.homeBadge.startsWith('http')
-    ? `<img src="${match.homeBadge}" alt="" class="flag-img" />`
-    : match.homeBadge || "🏠";
-
-  const awayBadgeDisplay = match.awayBadge && match.awayBadge.startsWith('http')
-    ? `<img src="${match.awayBadge}" alt="" class="flag-img" />`
-    : match.awayBadge || "✈️";
-
   card.innerHTML = `
     <div class="match-meta">
       <span class="match-competition">${match.competition || "Match"}</span>
@@ -236,7 +232,7 @@ function renderMatchCard(match, myPick) {
 
     <div class="match-teams">
       <div class="team-side">
-        <div class="team-badge">${homeBadgeDisplay}</div>
+        <div class="team-badge">${match.homeBadge || "🏠"}</div>
         <div class="team-name">${match.homeTeam}</div>
       </div>
       <div>
@@ -246,7 +242,7 @@ function renderMatchCard(match, myPick) {
         }
       </div>
       <div class="team-side">
-        <div class="team-badge">${awayBadgeDisplay}</div>
+        <div class="team-badge">${match.awayBadge || "✈️"}</div>
         <div class="team-name">${match.awayTeam}</div>
       </div>
     </div>
@@ -260,32 +256,32 @@ function renderMatchCard(match, myPick) {
     </div>
   `;
 
+  // Attach pick handlers
   if (canPick) {
     card.querySelectorAll(".pick-chip").forEach(chip => {
       chip.addEventListener("click", () => handlePick(match, chip.dataset.pick));
     });
   }
 
+  // Load group picks summary
   loadGroupSummary(match.id, card.querySelector(`#summary-${match.id}`));
+
   return card;
 }
 
 function renderPickChips(match, selectedPick, canPick) {
-  const winner = match.result; 
+  const winner = match.result; // "home" | "away" | "draw"
   const chips = [
     { pick: "home", label: match.homeTeam },
+    { pick: "draw", label: "Draw" },
     { pick: "away", label: match.awayTeam },
   ];
 
   return chips.map(({ pick, label }) => {
     let classes = "pick-chip";
     if (selectedPick === pick) {
-      if (match.status === "finished") {
-        if (winner === "draw") {
-          classes += " correct";
-        } else {
-          classes += pick === winner ? " correct" : " wrong";
-        }
+      if (winner && match.status === "finished") {
+        classes += pick === winner ? " correct" : " wrong";
       } else {
         classes += " selected";
       }
@@ -297,48 +293,38 @@ function renderPickChips(match, selectedPick, canPick) {
 
 async function handlePick(match, pick) {
   if (!currentUser) return;
+  const pickId = `${currentUser.uid}_${match.id}`;
+  await setDoc(doc(db, "picks", pickId), {
+    uid: currentUser.uid,
+    matchId: match.id,
+    pick,
+    pickedAt: serverTimestamp(),
+  }, { merge: true });
 
-  const safeMatchId = match.id.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const pickId = `${currentUser.uid}_${safeMatchId}`;
-
-  console.log("Attempting pick:", { pickId, matchId: match.id, safeMatchId, pick, uid: currentUser.uid });
-
-  try {
-    await setDoc(doc(db, "picks", pickId), {
-      uid: currentUser.uid,
-      matchId: match.id,
-      pick,
-      pickedAt: serverTimestamp(),
-    }, { merge: true });
-
-    console.log("Pick saved successfully!");
-
-    const chips = document.getElementById(`chips-${match.id}`);
-    if (chips) {
-      chips.innerHTML = renderPickChips(match, pick, true);
-      chips.querySelectorAll(".pick-chip").forEach(chip => {
-        chip.addEventListener("click", () => handlePick(match, chip.dataset.pick));
-      });
-    }
-  } catch (err) {
-    console.error("Pick failed:", err.code, err.message);
-    alert("Could not save pick: " + err.message);
+  // Refresh the card chips
+  const chips = document.getElementById(`chips-${match.id}`);
+  if (chips) {
+    chips.innerHTML = renderPickChips(match, pick, true);
+    chips.querySelectorAll(".pick-chip").forEach(chip => {
+      chip.addEventListener("click", () => handlePick(match, chip.dataset.pick));
+    });
   }
 }
 
 async function loadGroupSummary(matchId, el) {
   const snap = await getDocs(query(collection(db, "picks"), where("matchId", "==", matchId)));
-  const counts = { home: 0, away: 0 };
-  snap.forEach(d => { if(d.data().pick !== "draw") counts[d.data().pick] = (counts[d.data().pick] || 0) + 1; });
+  const counts = { home: 0, draw: 0, away: 0 };
+  snap.forEach(d => { counts[d.data().pick] = (counts[d.data().pick] || 0) + 1; });
   const total = snap.size;
   if (total === 0) { el.textContent = "No picks yet"; return; }
 
   const pct = (k) => total ? Math.round((counts[k] / total) * 100) : 0;
 
   el.innerHTML = `
-    <span>${total} pick${total !== 1 ? "s" : ""} · ${pct("home")}% Home · ${pct("away")}% Away</span>
+    <span>${total} pick${total !== 1 ? "s" : ""} · Home ${pct("home")}% · Draw ${pct("draw")}% · Away ${pct("away")}%</span>
     <div class="group-picks-bar">
       <div class="bar-home" style="width:${pct("home")}%"></div>
+      <div class="bar-draw" style="width:${pct("draw")}%"></div>
       <div class="bar-away" style="width:${pct("away")}%"></div>
     </div>
   `;
@@ -364,9 +350,9 @@ function loadTableView() {
       <div class="table-head">
         <span>#</span>
         <span>Player</span>
-        <span style="text-align:right">Played</span>
-        <span style="text-align:right">Correct</span>
-        <span style="text-align:right">Pts</span>
+        <span style="text-align:center">Played</span>
+        <span style="text-align:center">Correct</span>
+        <span style="text-align:center">Pts</span>
       </div>
       ${players.map((p, i) => {
         const isMe = p.id === currentUser?.uid;
@@ -376,7 +362,7 @@ function loadTableView() {
             <span class="table-rank">${rank}</span>
             <div class="table-player">
               <div class="mini-avatar" style="background:${avatarColor(p.name)}">${initials(p.name)}</div>
-              <div class="player-info-block">
+              <div>
                 <div class="player-name">${p.name}</div>
                 ${isMe ? `<span class="you-badge">YOU</span>` : ""}
               </div>
@@ -427,6 +413,7 @@ async function loadPickHistory() {
 
   if (picksSnap.empty) { el.innerHTML = `<div class="empty-state">No picks yet.</div>`; return; }
 
+  // Fetch match data for each pick
   const picks = [];
   picksSnap.forEach(d => picks.push({ id: d.id, ...d.data() }));
 
@@ -460,7 +447,7 @@ async function loadPickHistory() {
     return `
       <div class="history-item">
         <span class="history-match">${match.homeTeam} vs ${match.awayTeam}</span>
-        <span class="history-pick">Picked: ${p.pick === "home" ? match.homeTeam : match.awayTeam}</span>
+        <span class="history-pick">${p.pick === "home" ? match.homeTeam : p.pick === "away" ? match.awayTeam : "Draw"}</span>
         ${resultHtml}
       </div>
     `;
