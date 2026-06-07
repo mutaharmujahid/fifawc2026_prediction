@@ -397,19 +397,17 @@ async function handlePick(match, pick) {
     matchId: match.id,
     pick,
     pickedAt: serverTimestamp(),
-    scored: false,
+    scored: false,    // will be flipped to true by scoreMatchForAllUsers
     outcome: null,
   }, { merge: true });
 
-  // Update cache with new pick
+  // Update local cache immediately so chips reflect the new pick without a full reload
   if (myPicksCache) myPicksCache[match.id] = { uid: currentUser.uid, matchId: match.id, pick };
 
-  // Re-render chips using the NEW pick from cache (not the old closure)
   const chips = document.getElementById(`chips-${match.id}`);
   if (chips) {
     const canPick = match.status === "upcoming" && isBeforeKickoff(match);
-    const freshPick = myPicksCache[match.id]?.pick || null; // ← read from cache, not closure
-    chips.innerHTML = renderPickChips(match, freshPick, canPick);
+    chips.innerHTML = renderPickChips(match, pick, canPick);
     if (canPick) {
       chips.querySelectorAll(".pick-chip").forEach(chip => {
         chip.addEventListener("click", () => openPickModal(match, chip.dataset.pick));
@@ -465,12 +463,10 @@ function openPickModal(match, preselectedPick = null) {
     { pick: "home", label: match.homeTeam, badge: match.homeBadge || "🏠" },
     { pick: "away", label: match.awayTeam, badge: match.awayBadge || "✈️" },
   ].map(({ pick, label, badge }) => {
-    const isSelected = false;
     return `
-      <button class="modal-team-btn ${isSelected ? "modal-team-selected" : ""}" data-pick="${pick}">
+      <button class="modal-team-btn" data-pick="${pick}">
         <span class="modal-team-badge">${badge}</span>
         <span class="modal-team-name">${label}</span>
-        ${isSelected ? `<span class="modal-checkmark">✓</span>` : ""}
       </button>
     `;
   }).join("");
