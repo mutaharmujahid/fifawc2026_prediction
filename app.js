@@ -12,14 +12,12 @@ import {
   collection,
   doc,
   setDoc,
-  updateDoc,
   getDoc,
   getDocs,
   query,
   where,
   onSnapshot,
   serverTimestamp,
-  increment,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -39,9 +37,6 @@ const db = getFirestore(app);
 let currentUser = null;
 let userData = null;
 let unsubs = [];
-// Cache of scored pick IDs so we never double-award points
-// { [pickId]: true }
-const scoredPicks = {};
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────
 function phoneToEmail(phone) {
@@ -97,43 +92,7 @@ function evaluatePick(userPick, matchResult) {
   return "loss";                                       // wrong prediction
 }
 
-// Called whenever a match document transitions to "finished".
-// Scores ALL users who have a pick for that match, guarding against double-scoring
-// using the pick's `scored` flag stored in Firestore.
-async function scoreMatchForAllUsers(match) {
-  if (match.status !== "finished" || !match.result) return;
 
-  const picksSnap = await getDocs(
-    query(collection(db, "picks"), where("matchId", "==", match.id))
-  );
-
-  const promises = [];
-  picksSnap.forEach(pickDoc => {
-    const pick = pickDoc.data();
-    // Skip if already scored (persisted flag on the pick document)
-    if (pick.scored) return;
-
-    const outcome = evaluatePick(pick.pick, match.result);
-    if (outcome === null) return;
-
-    const isWin = outcome === "win";
-    const userRef = doc(db, "users", pick.uid);
-    const pickRef = doc(db, "picks", pickDoc.id);
-
-    promises.push(
-      updateDoc(userRef, {
-        points:  increment(isWin ? 1 : 0),
-        correct: increment(isWin ? 1 : 0),
-        total:   increment(1),
-      }).then(() =>
-        // Mark pick as scored so a page reload never re-awards points
-        setDoc(pickRef, { scored: true, outcome }, { merge: true })
-      )
-    );
-  });
-
-  await Promise.all(promises);
-}
 
 // ─── AUTH TABS ─────────────────────────────────────────────────────────────
 document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -282,13 +241,6 @@ function loadMatchesView() {
 
     const matches = [];
     snap.forEach(d => matches.push({ id: d.id, ...d.data() }));
-
-    // Auto-score any newly finished matches
-    for (const match of matches) {
-      if (match.status === "finished" && match.result) {
-        scoreMatchForAllUsers(match); // fire-and-forget; guards against double-scoring internally
-      }
-    }
 
     matches.sort((a, b) => {
       const order = { upcoming: 0, live: 1, finished: 2 };
