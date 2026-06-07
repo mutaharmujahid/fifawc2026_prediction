@@ -925,16 +925,6 @@ small {
   font-size: 1.75rem;
   line-height: 1;
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-}
-
-.flag-img {
-  width: 48px;
-  height: 36px;
-  object-fit: cover;
-  border-radius: 4px;
-  display: block;
 }
 
 .modal-team-name {
