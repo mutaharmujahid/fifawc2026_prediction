@@ -146,7 +146,7 @@
         <table>
           <thead>
             <tr>
-              <th>#</th><th>Match ID</th><th>Home Team</th><th>Away Team</th>
+              <th>#</th><th>Kickoff</th><th>Stage</th><th>Group</th><th>Home Team</th><th>Away Team</th>
               <th>User</th><th>Selection</th><th>Winner</th><th>Point</th>
             </tr>
           </thead>
@@ -262,6 +262,9 @@
             matchId: pick.matchId,
             homeTeam: match.homeTeam || "",
             awayTeam: match.awayTeam || "",
+            group: (match.group || "").replace("GROUP_", ""),
+            stage: (match.stage || "").replace("_", " "),
+            kickoff: match.kickoff ? match.kickoff.toDate ? match.kickoff.toDate() : new Date(match.kickoff) : null,
             user: users[pick.uid] || pick.uid || "Unknown",
             selection: pickMap(pick.pick || pick.selection),
             winner: pickMap(match.winner || match.result || "")
@@ -269,6 +272,7 @@
         }
       });
 
+      allRows.sort((a, b) => (a.kickoff || 0) - (b.kickoff || 0));
       window.allRows = allRows;
       buildFilters();
       renderStats();
@@ -289,13 +293,21 @@
 
   function buildFilters() {
     const users = [...new Set(allRows.map(r => r.user))].sort();
-    const matches = [...new Set(allRows.map(r => r.matchId))].sort();
     const uSel = document.getElementById("filterUser");
     const mSel = document.getElementById("filterMatch");
     uSel.innerHTML = '<option value="">All users</option>';
-    mSel.innerHTML = '<option value="">All matches</option>';
     users.forEach(u => { const o = document.createElement("option"); o.value = u; o.textContent = u; uSel.appendChild(o); });
-    matches.forEach(m => { const o = document.createElement("option"); o.value = m; o.textContent = m; mSel.appendChild(o); });
+    const matchOptions = {};
+    allRows.forEach(r => {
+      if (!matchOptions[r.matchId]) matchOptions[r.matchId] = `${r.homeTeam} vs ${r.awayTeam}`;
+    });
+    mSel.innerHTML = '<option value="">All matches</option>';
+    Object.entries(matchOptions).forEach(([id, label]) => {
+      const o = document.createElement("option");
+      o.value = id;
+      o.textContent = label;
+      mSel.appendChild(o);
+    });
   }
 
   function renderStats() {
@@ -350,10 +362,18 @@
       return r.selection === r.winner ? "✅" : "❌";
     };
 
+    const formatKickoff = (d) => {
+      if (!d) return "—";
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " " +
+             d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+    };
+
     document.getElementById("table-body").innerHTML = filtered.map((r, i) => `
       <tr>
         <td>${i + 1}</td>
-        <td>${r.matchId}</td>
+        <td style="white-space:nowrap">${formatKickoff(r.kickoff)}</td>
+        <td>${r.stage}</td>
+        <td>${r.group}</td>
         <td>${r.homeTeam}</td>
         <td>${r.awayTeam}</td>
         <td><strong>${r.user}</strong></td>
