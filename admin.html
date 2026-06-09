@@ -14,22 +14,31 @@
     }
     .gate-card {
       background: #fff; border: 1px solid #e0e0e0; border-radius: 14px;
-      padding: 36px 32px; width: 100%; max-width: 360px; text-align: center;
+      padding: 36px 32px; width: 100%; max-width: 380px; text-align: center;
     }
-    .gate-card h2 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
-    .gate-card p { font-size: 13px; color: #888; margin-bottom: 20px; }
-    .gate-card input {
+    .gate-card h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+    .gate-card p { font-size: 13px; color: #888; margin-bottom: 24px; }
+    .gate-field { margin-bottom: 12px; text-align: left; }
+    .gate-field label { font-size: 12px; color: #666; display: block; margin-bottom: 4px; }
+    .gate-field input {
       width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px;
-      font-size: 15px; margin-bottom: 12px; text-align: center; letter-spacing: 3px;
+      font-size: 14px; letter-spacing: 0;
     }
-    .gate-card button {
-      width: 100%; padding: 10px; background: #1a73e8; color: #fff;
-      border: none; border-radius: 8px; font-size: 15px; cursor: pointer;
+    .gate-field input:focus { outline: none; border-color: #1a73e8; }
+    .gate-btn {
+      width: 100%; padding: 11px; background: #1a73e8; color: #fff;
+      border: none; border-radius: 8px; font-size: 15px; cursor: pointer; margin-top: 4px;
     }
-    .gate-card button:hover { background: #1558b0; }
-    .gate-error { color: #c62828; font-size: 13px; margin-top: 8px; display: none; }
+    .gate-btn:hover { background: #1558b0; }
+    .gate-btn:disabled { background: #aaa; cursor: not-allowed; }
+    .gate-error { color: #c62828; font-size: 13px; margin-top: 10px; display: none; }
+    .gate-info { font-size: 12px; color: #aaa; margin-top: 14px; }
+
     h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
-    p.sub { font-size: 13px; color: #666; margin-bottom: 24px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .user-chip { font-size: 13px; color: #555; display: flex; align-items: center; gap: 8px; }
+    .signout-btn { font-size: 12px; color: #c62828; background: none; border: 1px solid #f5c6c6; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+    .signout-btn:hover { background: #fff5f5; }
 
     .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
     .stat { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 14px 16px; }
@@ -40,7 +49,6 @@
     input[type="text"] { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; width: 220px; }
     select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fff; }
     button { padding: 8px 16px; border-radius: 8px; border: 1px solid #ddd; background: #fff; font-size: 14px; cursor: pointer; }
-    button.primary { background: #1a73e8; color: #fff; border-color: #1a73e8; }
     button:hover { opacity: 0.85; }
 
     .table-wrap { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; overflow-x: auto; }
@@ -72,98 +80,87 @@
     .tab.active { color: #1a73e8; border-bottom-color: #1a73e8; font-weight: 500; }
 
     #loading { text-align: center; padding: 40px; color: #888; font-size: 14px; }
-    #error { text-align: center; padding: 40px; color: #c62828; font-size: 14px; display: none; }
+    #data-error { text-align: center; padding: 40px; color: #c62828; font-size: 14px; display: none; }
     .section { display: none; }
     .section.active { display: block; }
   </style>
 </head>
 <body>
 
+<!-- LOGIN GATE -->
 <div id="gate">
   <div class="gate-card">
     <h2>⚽ WC 2026 Admin</h2>
-    <p>Enter the admin password to continue</p>
-    <input type="password" id="pw-input" placeholder="Password" onkeydown="if(event.key==='Enter')checkPassword()" autofocus />
-    <button onclick="checkPassword()">Enter</button>
-    <div class="gate-error" id="pw-error">Incorrect password. Try again.</div>
+    <p>Sign in with your Firebase admin account</p>
+    <div class="gate-field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="admin@example.com" />
+    </div>
+    <div class="gate-field">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" />
+    </div>
+    <button class="gate-btn" id="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="gate-error" id="login-error"></div>
+    <div class="gate-info">Only authorized accounts can access this page.</div>
   </div>
 </div>
 
+<!-- MAIN APP -->
 <div id="app" style="display:none">
-<h1>⚽ FIFA WC 2026 — Admin Dashboard</h1>
-<p class="sub">Live view of all picks and standings</p>
 
-<div id="loading">Loading data from Firebase...</div>
-<div id="error">Failed to load data. Check console for details.</div>
-
-<div id="main" style="display:none">
-
-  <div class="stats" id="stats"></div>
-
-  <div class="tab-bar">
-    <div class="tab active" onclick="showTab('leaderboard')">Leaderboard</div>
-    <div class="tab" onclick="showTab('picks')">All Picks</div>
-  </div>
-
-  <div class="section active" id="tab-leaderboard">
-    <div class="leaderboard" id="leaderboard"></div>
-  </div>
-
-  <div class="section" id="tab-picks">
-    <div class="controls">
-      <input type="text" id="search" placeholder="Search user or team..." oninput="renderTable()" />
-      <select id="filterUser" onchange="renderTable()"><option value="">All users</option></select>
-      <select id="filterMatch" onchange="renderTable()"><option value="">All matches</option></select>
-      <button onclick="downloadCSV()">⬇ Export CSV</button>
+  <div class="topbar">
+    <div>
+      <h1>⚽ FIFA WC 2026 — Admin Dashboard</h1>
+      <p style="font-size:13px;color:#666;margin-top:2px">Live view of all picks and standings</p>
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Match ID</th>
-            <th>Home Team</th>
-            <th>Away Team</th>
-            <th>User</th>
-            <th>Selection</th>
-            <th>Winner</th>
-            <th>Point</th>
-          </tr>
-        </thead>
-        <tbody id="table-body"></tbody>
-      </table>
+    <div class="user-chip">
+      <span id="logged-in-email"></span>
+      <button class="signout-btn" onclick="doSignOut()">Sign out</button>
+    </div>
+  </div>
+
+  <div id="loading">Loading data from Firebase...</div>
+  <div id="data-error"></div>
+
+  <div id="main" style="display:none">
+    <div class="stats" id="stats"></div>
+
+    <div class="tab-bar">
+      <div class="tab active" onclick="showTab('leaderboard')">Leaderboard</div>
+      <div class="tab" onclick="showTab('picks')">All Picks</div>
+    </div>
+
+    <div class="section active" id="tab-leaderboard">
+      <div class="leaderboard" id="leaderboard"></div>
+    </div>
+
+    <div class="section" id="tab-picks">
+      <div class="controls">
+        <input type="text" id="search" placeholder="Search user or team..." oninput="renderTable()" />
+        <select id="filterUser" onchange="renderTable()"><option value="">All users</option></select>
+        <select id="filterMatch" onchange="renderTable()"><option value="">All matches</option></select>
+        <button onclick="downloadCSV()">⬇ Export CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Match ID</th><th>Home Team</th><th>Away Team</th>
+              <th>User</th><th>Selection</th><th>Winner</th><th>Point</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
 </div>
-
-</div>
-
-<script>
-  const ADMIN_PASSWORD = "wc2026admin";
-
-  function checkPassword() {
-    const val = document.getElementById("pw-input").value;
-    if (val === ADMIN_PASSWORD) {
-      document.getElementById("gate").style.display = "none";
-      document.getElementById("app").style.display = "block";
-      sessionStorage.setItem("wc_admin_auth", "true");
-    } else {
-      const err = document.getElementById("pw-error");
-      err.style.display = "block";
-      document.getElementById("pw-input").value = "";
-      document.getElementById("pw-input").focus();
-    }
-  }
-
-  if (sessionStorage.getItem("wc_admin_auth") === "true") {
-    document.getElementById("gate").style.display = "none";
-    document.getElementById("app").style.display = "block";
-  }
-</script>
 
 <script type="module">
   import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -176,48 +173,104 @@
   };
 
   const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  const auth = getAuth(app);
   const db = getFirestore(app);
 
   let allRows = [];
 
-  try {
-    const [matchesSnap, picksSnap] = await Promise.all([
-      getDocs(collection(db, "matches")),
-      getDocs(collection(db, "picks"))
-    ]);
+  // Auth state listener
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      document.getElementById("gate").style.display = "none";
+      document.getElementById("app").style.display = "block";
+      document.getElementById("logged-in-email").textContent = user.email;
+      await loadData();
+    } else {
+      document.getElementById("gate").style.display = "flex";
+      document.getElementById("app").style.display = "none";
+    }
+  });
 
-    const matches = {};
-    matchesSnap.forEach(doc => matches[doc.id] = doc.data());
+  // Login
+  window.doLogin = async function() {
+    const email = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+    const btn = document.getElementById("login-btn");
+    const err = document.getElementById("login-error");
 
-    picksSnap.forEach(doc => {
-      const pick = doc.data();
-      const match = matches[pick.matchId];
-      if (match) {
-        allRows.push({
-          matchId: pick.matchId,
-          homeTeam: match.homeTeam || "",
-          awayTeam: match.awayTeam || "",
-          user: pick.userName || pick.userId || pick.user || "Unknown",
-          selection: pick.pick || pick.selection || "",
-          winner: match.winner || match.result || ""
-        });
-      }
-    });
+    err.style.display = "none";
+    btn.disabled = true;
+    btn.textContent = "Signing in...";
 
-    window.allRows = allRows;
-    buildFilters();
-    renderStats();
-    renderLeaderboard();
-    renderTable();
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (e) {
+      err.textContent = friendlyError(e.code);
+      err.style.display = "block";
+      btn.disabled = false;
+      btn.textContent = "Sign In";
+    }
+  };
 
-    document.getElementById("loading").style.display = "none";
-    document.getElementById("main").style.display = "block";
+  // Sign out
+  window.doSignOut = async function() {
+    await signOut(auth);
+  };
 
-  } catch (e) {
-    console.error(e);
-    document.getElementById("loading").style.display = "none";
-    document.getElementById("error").style.display = "block";
-    document.getElementById("error").textContent = "Error: " + e.message;
+  function friendlyError(code) {
+    switch(code) {
+      case "auth/invalid-email": return "Invalid email address.";
+      case "auth/user-not-found": return "No account found with this email.";
+      case "auth/wrong-password": return "Incorrect password.";
+      case "auth/invalid-credential": return "Incorrect email or password.";
+      case "auth/too-many-requests": return "Too many attempts. Try again later.";
+      default: return "Sign in failed. Check your credentials.";
+    }
+  }
+
+  // Load Firestore data
+  async function loadData() {
+    try {
+      const [matchesSnap, picksSnap] = await Promise.all([
+        getDocs(collection(db, "matches")),
+        getDocs(collection(db, "picks"))
+      ]);
+
+      const matches = {};
+      matchesSnap.forEach(doc => matches[doc.id] = doc.data());
+
+      allRows = [];
+      picksSnap.forEach(doc => {
+        const pick = doc.data();
+        const match = matches[pick.matchId];
+        if (match) {
+          allRows.push({
+            matchId: pick.matchId,
+            homeTeam: match.homeTeam || "",
+            awayTeam: match.awayTeam || "",
+            user: pick.userName || pick.userId || pick.user || "Unknown",
+            selection: pick.pick || pick.selection || "",
+            winner: match.winner || match.result || ""
+          });
+        }
+      });
+
+      window.allRows = allRows;
+      buildFilters();
+      renderStats();
+      renderLeaderboard();
+      renderTable();
+
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("main").style.display = "block";
+
+    } catch (e) {
+      console.error(e);
+      document.getElementById("loading").style.display = "none";
+      const errEl = document.getElementById("data-error");
+      errEl.style.display = "block";
+      errEl.textContent = "Error loading data: " + e.message;
+    }
   }
 
   function buildFilters() {
@@ -225,6 +278,8 @@
     const matches = [...new Set(allRows.map(r => r.matchId))].sort();
     const uSel = document.getElementById("filterUser");
     const mSel = document.getElementById("filterMatch");
+    uSel.innerHTML = '<option value="">All users</option>';
+    mSel.innerHTML = '<option value="">All matches</option>';
     users.forEach(u => { const o = document.createElement("option"); o.value = u; o.textContent = u; uSel.appendChild(o); });
     matches.forEach(m => { const o = document.createElement("option"); o.value = m; o.textContent = m; mSel.appendChild(o); });
   }
@@ -233,7 +288,7 @@
     const users = new Set(allRows.map(r => r.user)).size;
     const matches = new Set(allRows.map(r => r.matchId)).size;
     const totalPicks = allRows.length;
-    const correct = allRows.filter(r => r.winner && r.selection === r.winner).length;
+    const correct = allRows.filter(r => r.winner && (r.selection === r.winner || r.winner === "D")).length;
     document.getElementById("stats").innerHTML = `
       <div class="stat"><div class="stat-label">Total Users</div><div class="stat-value">${users}</div></div>
       <div class="stat"><div class="stat-label">Matches with Picks</div><div class="stat-value">${matches}</div></div>
