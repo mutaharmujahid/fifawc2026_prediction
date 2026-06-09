@@ -231,13 +231,27 @@
   // Load Firestore data
   async function loadData() {
     try {
-      const [matchesSnap, picksSnap] = await Promise.all([
+      const [matchesSnap, picksSnap, usersSnap] = await Promise.all([
         getDocs(collection(db, "matches")),
-        getDocs(collection(db, "picks"))
+        getDocs(collection(db, "picks")),
+        getDocs(collection(db, "users"))
       ]);
 
       const matches = {};
       matchesSnap.forEach(doc => matches[doc.id] = doc.data());
+
+      const users = {};
+      usersSnap.forEach(doc => {
+        const u = doc.data();
+        users[u.uid || doc.id] = u.name || u.displayName || u.email || "Unknown";
+      });
+
+      const pickMap = (val) => {
+        if (val === "home") return "H";
+        if (val === "away") return "A";
+        if (val === "draw") return "D";
+        return val || "";
+      };
 
       allRows = [];
       picksSnap.forEach(doc => {
@@ -248,9 +262,9 @@
             matchId: pick.matchId,
             homeTeam: match.homeTeam || "",
             awayTeam: match.awayTeam || "",
-            user: pick.userName || pick.userId || pick.user || "Unknown",
-            selection: pick.pick || pick.selection || "",
-            winner: match.winner || match.result || ""
+            user: users[pick.uid] || pick.uid || "Unknown",
+            selection: pickMap(pick.pick || pick.selection),
+            winner: pickMap(match.winner || match.result || "")
           });
         }
       });
