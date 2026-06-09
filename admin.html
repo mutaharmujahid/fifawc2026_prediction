@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FIFA WC 2026 — Admin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f4f6f9; color: #1a1a1a; padding: 24px; }
+    h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    p.sub { font-size: 13px; color: #666; margin-bottom: 24px; }
+
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .stat { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 14px 16px; }
+    .stat-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+    .stat-value { font-size: 22px; font-weight: 600; }
+
+    .controls { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    input[type="text"] { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; width: 220px; }
+    select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fff; }
+    button { padding: 8px 16px; border-radius: 8px; border: 1px solid #ddd; background: #fff; font-size: 14px; cursor: pointer; }
+    button.primary { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+    button:hover { opacity: 0.85; }
+
+    .table-wrap { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 700px; }
+    thead th { background: #f9f9f9; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 1px solid #e0e0e0; white-space: nowrap; }
+    tbody td { padding: 9px 14px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #fafafa; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-h { background: #e8f5e9; color: #2e7d32; }
+    .badge-a { background: #fff3e0; color: #e65100; }
+    .badge-d { background: #e3f2fd; color: #1565c0; }
+
+    .leaderboard { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
+    .lb-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #f0f0f0; }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-rank { font-size: 13px; font-weight: 700; color: #888; width: 24px; }
+    .lb-rank.gold { color: #f4b400; }
+    .lb-rank.silver { color: #9e9e9e; }
+    .lb-rank.bronze { color: #c07c3f; }
+    .lb-name { flex: 1; font-size: 14px; font-weight: 500; }
+    .lb-pts { font-size: 14px; font-weight: 700; color: #1a73e8; }
+    .lb-bar-wrap { width: 120px; background: #f0f0f0; border-radius: 4px; height: 6px; }
+    .lb-bar { height: 6px; border-radius: 4px; background: #1a73e8; }
+
+    .tab-bar { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid #e0e0e0; }
+    .tab { padding: 8px 18px; font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; color: #666; }
+    .tab.active { color: #1a73e8; border-bottom-color: #1a73e8; font-weight: 500; }
+
+    #loading { text-align: center; padding: 40px; color: #888; font-size: 14px; }
+    #error { text-align: center; padding: 40px; color: #c62828; font-size: 14px; display: none; }
+    .section { display: none; }
+    .section.active { display: block; }
+  </style>
+</head>
+<body>
+
+<h1>⚽ FIFA WC 2026 — Admin Dashboard</h1>
+<p class="sub">Live view of all picks and standings</p>
+
+<div id="loading">Loading data from Firebase...</div>
+<div id="error">Failed to load data. Check console for details.</div>
+
+<div id="main" style="display:none">
+
+  <div class="stats" id="stats"></div>
+
+  <div class="tab-bar">
+    <div class="tab active" onclick="showTab('leaderboard')">Leaderboard</div>
+    <div class="tab" onclick="showTab('picks')">All Picks</div>
+  </div>
+
+  <div class="section active" id="tab-leaderboard">
+    <div class="leaderboard" id="leaderboard"></div>
+  </div>
+
+  <div class="section" id="tab-picks">
+    <div class="controls">
+      <input type="text" id="search" placeholder="Search user or team..." oninput="renderTable()" />
+      <select id="filterUser" onchange="renderTable()"><option value="">All users</option></select>
+      <select id="filterMatch" onchange="renderTable()"><option value="">All matches</option></select>
+      <button onclick="downloadCSV()">⬇ Export CSV</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Match ID</th>
+            <th>Home Team</th>
+            <th>Away Team</th>
+            <th>User</th>
+            <th>Selection</th>
+            <th>Winner</th>
+            <th>Point</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+  import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAP3taumTM2B-pfBVeQN9Y8yDOojz5_IXE",
+    authDomain: "fifa-world-cup-2026-prediction.firebaseapp.com",
+    projectId: "fifa-world-cup-2026-prediction",
+    storageBucket: "fifa-world-cup-2026-prediction.firebasestorage.app",
+    messagingSenderId: "867558876012",
+    appId: "1:867558876012:web:dfd174abff12c35fd9c949"
+  };
+
+  const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  let allRows = [];
+
+  try {
+    const [matchesSnap, picksSnap] = await Promise.all([
+      getDocs(collection(db, "matches")),
+      getDocs(collection(db, "picks"))
+    ]);
+
+    const matches = {};
+    matchesSnap.forEach(doc => matches[doc.id] = doc.data());
+
+    picksSnap.forEach(doc => {
+      const pick = doc.data();
+      const match = matches[pick.matchId];
+      if (match) {
+        allRows.push({
+          matchId: pick.matchId,
+          homeTeam: match.homeTeam || "",
+          awayTeam: match.awayTeam || "",
+          user: pick.userName || pick.userId || pick.user || "Unknown",
+          selection: pick.pick || pick.selection || "",
+          winner: match.winner || match.result || ""
+        });
+      }
+    });
+
+    window.allRows = allRows;
+    buildFilters();
+    renderStats();
+    renderLeaderboard();
+    renderTable();
+
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("main").style.display = "block";
+
+  } catch (e) {
+    console.error(e);
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("error").style.display = "block";
+    document.getElementById("error").textContent = "Error: " + e.message;
+  }
+
+  function buildFilters() {
+    const users = [...new Set(allRows.map(r => r.user))].sort();
+    const matches = [...new Set(allRows.map(r => r.matchId))].sort();
+    const uSel = document.getElementById("filterUser");
+    const mSel = document.getElementById("filterMatch");
+    users.forEach(u => { const o = document.createElement("option"); o.value = u; o.textContent = u; uSel.appendChild(o); });
+    matches.forEach(m => { const o = document.createElement("option"); o.value = m; o.textContent = m; mSel.appendChild(o); });
+  }
+
+  function renderStats() {
+    const users = new Set(allRows.map(r => r.user)).size;
+    const matches = new Set(allRows.map(r => r.matchId)).size;
+    const totalPicks = allRows.length;
+    const correct = allRows.filter(r => r.winner && r.selection === r.winner).length;
+    document.getElementById("stats").innerHTML = `
+      <div class="stat"><div class="stat-label">Total Users</div><div class="stat-value">${users}</div></div>
+      <div class="stat"><div class="stat-label">Matches with Picks</div><div class="stat-value">${matches}</div></div>
+      <div class="stat"><div class="stat-label">Total Picks</div><div class="stat-value">${totalPicks}</div></div>
+      <div class="stat"><div class="stat-label">Correct Picks</div><div class="stat-value">${correct}</div></div>
+    `;
+  }
+
+  function renderLeaderboard() {
+    const scores = {};
+    allRows.forEach(r => {
+      if (!scores[r.user]) scores[r.user] = 0;
+      if (r.winner && r.selection === r.winner) scores[r.user]++;
+      else if (r.winner === "D" && r.selection) scores[r.user]++;
+    });
+    const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+    const max = sorted[0]?.[1] || 1;
+    const rankClass = (i) => i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "";
+    document.getElementById("leaderboard").innerHTML = sorted.map(([user, pts], i) => `
+      <div class="lb-row">
+        <div class="lb-rank ${rankClass(i)}">${i + 1}</div>
+        <div class="lb-name">${user}</div>
+        <div class="lb-bar-wrap"><div class="lb-bar" style="width:${Math.round((pts/max)*100)}%"></div></div>
+        <div class="lb-pts">${pts} pts</div>
+      </div>
+    `).join("");
+  }
+
+  window.renderTable = function() {
+    const search = document.getElementById("search").value.toLowerCase();
+    const userFilter = document.getElementById("filterUser").value;
+    const matchFilter = document.getElementById("filterMatch").value;
+
+    const filtered = allRows.filter(r => {
+      const matchesSearch = !search || r.user.toLowerCase().includes(search) || r.homeTeam.toLowerCase().includes(search) || r.awayTeam.toLowerCase().includes(search);
+      const matchesUser = !userFilter || r.user === userFilter;
+      const matchesMatch = !matchFilter || r.matchId === matchFilter;
+      return matchesSearch && matchesUser && matchesMatch;
+    });
+
+    const badgeClass = (s) => s === "H" ? "badge-h" : s === "A" ? "badge-a" : "badge-d";
+    const point = (r) => {
+      if (!r.winner) return "—";
+      if (r.winner === "D" && r.selection) return "✅";
+      return r.selection === r.winner ? "✅" : "❌";
+    };
+
+    document.getElementById("table-body").innerHTML = filtered.map((r, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${r.matchId}</td>
+        <td>${r.homeTeam}</td>
+        <td>${r.awayTeam}</td>
+        <td><strong>${r.user}</strong></td>
+        <td><span class="badge ${badgeClass(r.selection)}">${r.selection || "—"}</span></td>
+        <td><span class="badge ${badgeClass(r.winner)}">${r.winner || "—"}</span></td>
+        <td>${point(r)}</td>
+      </tr>
+    `).join("");
+  };
+
+  window.downloadCSV = function() {
+    const rows = [["Match ID","Home Team","Away Team","User","Selection","Winner","Point"]];
+    allRows.forEach(r => {
+      const pt = !r.winner ? "" : (r.winner === "D" && r.selection) ? "1" : r.selection === r.winner ? "1" : "0";
+      rows.push([r.matchId, r.homeTeam, r.awayTeam, r.user, r.selection, r.winner, pt]);
+    });
+    const csv = rows.map(r => r.join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = "wc2026_picks.csv";
+    a.click();
+  };
+
+  window.showTab = function(tab) {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+    document.querySelector(`[onclick="showTab('${tab}')"]`).classList.add("active");
+    document.getElementById(`tab-${tab}`).classList.add("active");
+  };
+</script>
+</body>
+</html>
